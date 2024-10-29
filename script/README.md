@@ -34,5 +34,5 @@ https://api.github.com/search/issues?q=involves:MeteorsLiu&per_page=100&page=1
 ```
 cd script
 pip install -r requirements.txt
-python icehub.py --username SweetIceLolly --output_dir data
+python icehub.py --help
 ```

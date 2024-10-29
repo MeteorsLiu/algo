@@ -21,7 +21,7 @@ from typing import Literal
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s %(levelname)s %(message)s',
+    format='%(asctime)s %(levelname)s %(filename)s:%(lineno)d %(message)s',
     datefmt='%Y-%m-%d %H:%M:%S')
 
 log = logger = logging
@@ -80,6 +80,7 @@ class Icehub():
         self.user_issue = self.algodb['user_issue']
         self.user_pr = self.algodb['user_pr']
         self.user_discussion = self.algodb['user_discussion']
+        self.repo_info = self.algodb['repo_info']
 
         self.gh_session = requests.Session()
         self.gh_session.auth = (GITHUB_USERNAME, GITHUB_ACCESS_TOKEN)
@@ -201,21 +202,23 @@ class Icehub():
     def get_user_issues_or_pullrequest(self, user: str, qualifier: Literal['is:issue', 'is:pull-request'], 
                                          per_page: int = 100, page: int = 1):
         item_list = []
+        if qualifier == 'is:issue':
+            collection = self.user_issue
+        elif qualifier== 'is:pull-request':
+            collection = self.user_pr
+        else:
+            log.error('qualifier can not empty.')
+            return item_list
+        
         try:
             # When the initial core rate limit time is 0, wait for the API rate limit to reset.
-            self.api_use('search')
+            self.api_use('core')
 
             while True:
-                rtn = self.gh_session.get(
-                    url=f'https://api.github.com/search/issues',
-                    params={
-                        'q': f'involves:{user}+{qualifier}',
-                        'per_page': per_page,
-                        'page': page
-                    }
-                )
+                rtn = self.gh_session.get(url=f'https://api.github.com/search/issues?q=involves:{user}+{qualifier}&per_page={per_page}&page={page}')
                 if rtn.status_code != 200:
                     log.error("Error! Status: " + str(rtn.status_code))
+                    log.error(rtn.text)
                     return item_list
                 
                 data = rtn.json()
@@ -226,23 +229,27 @@ class Icehub():
                 for item in tqdm(items, desc=f"Updating User {qualifier}"):
                     reactions = item['reactions']
                     reactions.pop('url')
+                    owner, repo_name = item["repository_url"][29:].split('/')
 
-                    self.user_issue.update_one(
+                    collection.update_one(
                         {
-                            'issue_id': item['id'],
+                            'issue_id': item['id'], # issue id
                             'user': user
                         }, 
-                        {**{
-                        'issue_id': item['id'], # issue id
-                        'user': user,
-                        # https://api.github.com/repos/
-                        "repository_name": item["repository_url"][29:],
-                        'state': item['state'],
-                        "created_at": string_to_timestamp(item['created_at']) if item['created_at'] else 0,
-                        "updated_at": string_to_timestamp(item['updated_at']) if item['updated_at'] else 0,
-                        "closed_at": string_to_timestamp(item['closed_at']) if item['closed_at'] else 0,
-                        }, **{'react_'+reaction[0]: reaction[1] for reaction in reactions.items()}
-                    }, upsert=True)
+                        {
+                            '$set': {
+                                'issue_id': item['id'],
+                                'user': user,
+                                # https://api.github.com/repos/{owner}/{repo_name}
+                                "repo_owner": owner,
+                                "repo_name": repo_name,
+                                "created_at": string_to_timestamp(item['created_at']) if item['created_at'] else 0,
+                                "updated_at": string_to_timestamp(item['updated_at']) if item['updated_at'] else 0,
+                                "closed_at": string_to_timestamp(item['closed_at']) if item['closed_at'] else 0,
+                                # closed_at = 0 -> state = open
+                                "reactions": reactions
+                            }
+                        }, upsert=True)
 
                 if len(data) < per_page:
                     self.user_info.update_one(
@@ -250,26 +257,75 @@ class Icehub():
                             'username': user,
                         },
                         {
-                            '{}_count'.format('issue' if 'issue' in qualifier else 'pr'): total_count
+                            '$set': {
+                                '{}_count'.format('issue' if 'issue' in qualifier else 'pr'): total_count
+                            }
                         },
                         upsert=True
                     )
                     log.info(f'{user} {qualifier} saved.')
                     break
 
-                log.info(f'{user} issuses page {page} crawled, get next page.')
+                log.info(f'{user} {qualifier} page {page} crawled, get next page.')
                 page += 1
-                self.api_use('search', 1)
+                self.api_use('core', 1)
 
         except KeyboardInterrupt:
             log.info('User Interrupt.')
             return item_list
         
         except:
-            log.error('Unknown error')
+            log.exception('Unknown error', stack_info=True)
             return item_list
             
         return item_list
+
+    def get_user_info_empty(self, col_name: str) -> list:
+        data = self.user_info.find({col_name: None}, limit=100)
+        log.debug(data.to_list())
+        return data
+
+    def save_repository_info(self, repo_owner: str, repo_name: str):
+        try:
+            self.api_use('core')
+
+            rtn = self.gh_session.get(url=f'https://api.github.com/repos/{repo_owner}/{repo_name}')
+            if rtn.status_code != 200:
+                log.error("Error! Status: " + str(rtn.status_code))
+                log.error(rtn.text)
+                return
+            data = rtn.json()
+            
+            self.repo_info.update_one(
+                {'_id': data['id']},
+                {
+                    '$set': {
+                        '_id': data['id'],
+                        'repo_owner': repo_owner,
+                        'repo_name': repo_name,
+                        'language': data['language'],
+                        'archived': data['archived'],
+                        'forks_count': data['forks_count'],
+                        'watchers_count': data['watchers_count'],
+                        'stargazers_count': data['stargazers_count'],
+                        'open_issues_count': data['open_issues_count'],
+                        'subscribers_count': data['subscribers_count'],
+                        "created_at": string_to_timestamp(data['created_at']),
+                        "updated_at": string_to_timestamp(data['updated_at']),
+                        "pushed_at": string_to_timestamp(data['pushed_at'])
+                    }
+                },
+                upsert=True
+            )
+            self.api_use('core', 1)
+            log.info(f'{repo_owner}/{repo_name} is saved')
+
+        except KeyboardInterrupt:
+            log.info('User Interrupt.')
+            return
+        except:
+            log.exception('Unknown error', stack_info=True)
+            return
 
 if __name__ == '__main__':
     # 创建解析器
@@ -281,6 +337,9 @@ if __name__ == '__main__':
     parser.add_argument('--following', help="get user followings", action='store_true')
     parser.add_argument('--user_issue', help="get user issue", action='store_true')
     parser.add_argument('--user_pr', help="get user pull request", action='store_true')
+    parser.add_argument('--user_null', type=str, help="get user null column", required=False)
+    parser.add_argument('--repo_owner', type=str, help="get repository owner", required=False)
+    parser.add_argument('--repo_name', type=str, help="get repository name", required=False)
     
     # 解析参数
     args = parser.parse_args()
@@ -300,4 +359,10 @@ if __name__ == '__main__':
     if args.user_pr:
         ice.get_user_issues_or_pullrequest(args.user, 'is:pull-request')
 
-    log.info(ice.get_rate_limit())
+    if args.user_null:
+        ice.get_user_info_empty(args.user_null)
+
+    if args.repo_owner and args.repo_name:
+        ice.save_repository_info(args.repo_owner, args.repo_name)
+
+    # log.info(ice.get_rate_limit())
