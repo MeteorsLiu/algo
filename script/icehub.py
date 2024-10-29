@@ -183,7 +183,7 @@ if __name__ == '__main__':
     # 添加参数
     parser.add_argument('--user', type=str, help="github username", required=True)
     parser.add_argument('--followers', help="get user followers", action='store_true')
-    parser.add_argument('--followings', help="get user followings", action='store_true')
+    parser.add_argument('--following', help="get user followings", action='store_true')
     
     # 解析参数
     args = parser.parse_args()
@@ -194,7 +194,7 @@ if __name__ == '__main__':
     if args.followers:
         ice.follow_saved(user=args.user, follow_type='followers')
     
-    if args.followings:
-        ice.follow_saved(user=args.user, follow_type='followings')
+    if args.following:
+        ice.follow_saved(user=args.user, follow_type='following')
 
     log.info(ice.get_rate_limit())
