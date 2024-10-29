@@ -132,7 +132,13 @@ class Icehub():
             self.api_use('core')
 
             while True:
-                rtn = self.gh_session.get(url=f'https://api.github.com/users/{user}/{follow_type}?per_page={per_page}&page{page}')
+                rtn = self.gh_session.get(
+                    url=f'https://api.github.com/users/{user}/{follow_type}',
+                    params={
+                        'per_page': per_page,
+                        'page': page
+                    }
+                )
                 if rtn.status_code != 200:
                     log.error("Error! Status: " + str(rtn.status_code))
                     return follow_list
