@@ -280,10 +280,12 @@ class Icehub():
             
         return item_list
 
-    def get_user_info_empty(self, col_name: str) -> list:
+    def get_empty_col_user(self, col_name: str) -> list:
         data = self.user_info.find({col_name: None}, limit=100)
         log.debug(data.to_list())
-        return data
+        # if len(data.to_list()) == 0:
+        #     data = self.user_info.find({}, limit=100)
+        return data.to_list()
 
     def save_repository_info(self, repo_owner: str, repo_name: str):
         try:
