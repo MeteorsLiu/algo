@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 import argparse
 from pymongo import MongoClient
 from tqdm import tqdm
+from typing import Literal
 
 logging.basicConfig(
     level=logging.INFO,
@@ -36,11 +37,6 @@ MONGODB_USENAME = os.environ.get('MONGODB_USENAME')
 MONGODB_PASSWORD = os.environ.get('MONGODB_PASSWORD')
 
 class Icehub():
-    url_followers = 'https://api.github.com/users/{}/followers?per_page={}&page{}'
-    url_following = 'https://api.github.com/users/{}/following'
-    url_id = 'https://api.github.com/users/{}'
-    
-
     headers = {
             # github 遵守 accept 返回类型
             'accept': 'application/json',
@@ -74,16 +70,16 @@ class Icehub():
 
         self.get_rate_limit()
 
-    def get_rate_limit(self):
+    def get_rate_limit(self) -> dict:
         """
-        core | integration_manifest | search: 
+        core | integration_manifest | search | ...: 
         
         >limit | remaining | reset | used | resource
         """
         rtn = self.gh_session.get(url='https://api.github.com/rate_limit')
         if rtn.status_code != 200:
             log.error("Error! Status: " + str(rtn.status_code))
-            return
+            return {}
         data = rtn.json()
         self.rate_limit = data['resources']
         return self.rate_limit
@@ -114,10 +110,10 @@ class Icehub():
         
         s.close()
 
-    def api_use(self, api_type: str, times: int = 0):
-        """
-        api_type: core | integration_manifest | search
-        """
+    def api_use(self, api_type: Literal['core', 'search', 'graphql', 'integration_manifest', 
+                                        'source_import', 'code_scanning_upload', 'actions_runner_registration', 
+                                        'scim', 'dependency_snapshots', 'audit_log', 'audit_log_streaming',
+                                        'code_search'], times: int = 0):
         self.rate_limit[api_type]['remaining'] -= times
         if self.rate_limit[api_type]['remaining'] == 0:
             # reset: 1730127528
@@ -128,30 +124,33 @@ class Icehub():
             time.sleep(wait_time)
             self.get_rate_limit()
 
-    def get_user_followers(self, user: str, per_page: int = 100, page: int = 1) -> list:
-        follower_list = []
+    def get_user_follow(self, user: str, follow_type: Literal['followers', 'following'], per_page: int = 100, page: int = 1) -> list:
+        follow_list = []
 
         try:
             # When the initial core rate limit time is 0, wait for the API rate limit to reset.
             self.api_use('core')
 
             while True:
-                rtn = self.gh_session.get(url=f'https://api.github.com/users/{user}/followers?per_page={per_page}&page{page}')
+                rtn = self.gh_session.get(url=f'https://api.github.com/users/{user}/{follow_type}?per_page={per_page}&page{page}')
                 if rtn.status_code != 200:
                     log.error("Error! Status: " + str(rtn.status_code))
-                    return follower_list
+                    return follow_list
+                
                 data = rtn.json()
                 for i in data:
                     if i['type'] == "User":
-                        follower_list.append(
+                        follow_list.append(
                             {
                                 'id': i['id'],
                                 'login': i['login']
                             }
                         )
+
                 if len(data) < per_page:
-                    log.info(f'{user} followers crawling completed.')
+                    log.info(f'{user} {follow_type} crawling completed.')
                     break
+
                 log.info(f'page {page} crawled, get next page after 5 seconds.')
                 time.sleep(5)
                 page += 1
@@ -159,75 +158,43 @@ class Icehub():
 
         except KeyboardInterrupt:
             log.info('User Interrupt.')
-            return follower_list
+            return follow_list
+        
+        except:
+            log.error('Unknown error')
+            return follow_list
             
-        return follower_list
+        return follow_list
 
-    def get_user_following(self, user: str, per_page: int = 100, page: int = 1) -> list:
-        self.get_rate_limit()
-        if self.rate_limit['core']['remaining'] == 0:
-            # reset: 1730127528
-            reset_time = self.rate_limit['core']['reset']
-            local_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(reset_time)))
-            wait_time = reset_time - int(time.time()) + 2
-            log.info(f'api reset at {local_time}, wait {wait_time} seconds...')
-            time.sleep(wait_time)
-
-        following_list = []
-        while True and self.rate_limit['core']['remaining']:
-            rtn = self.gh_session.get(url=f'https://api.github.com/users/{user}/following?per_page={per_page}&page{page}')
-            if rtn.status_code != 200:
-                log.error("Error! Status: " + str(rtn.status_code))
-                return []
-            data = rtn.json()
-            for i in data:
-                if i['type'] == "User":
-                    following_list.append(
-                        {
-                            'id': i['id'],
-                            'login': i['login']
-                        }
-                    )
-            if len(data) < per_page:
-                break
-            page += 1
-        return following_list
-
-    def followers_saved(self, user: str):
-        followers = self.get_user_followers(user)
-        for i in tqdm(followers, desc="Updating User Info"):
+    def follow_saved(self, user: str, follow_type: Literal['followers', 'following']):
+        follow_meta = self.get_user_follow(user)
+        for i in tqdm(follow_meta, desc="Updating User Info"):
             self.user_info.update_one(
                 {'_id': i['id']},
                 {"$setOnInsert": {'username': i['login'], 'ok': False}},
                 upsert=True
             )
-        log.info(f'{user} followers saved.')
-
-    @DeprecationWarning
-    def followings_saved(self, user: str):
-        followings = self.get_user_followings(user)
-        result = self.user_info.insert_many(
-            [{'_id': i['id'], 'username': i['login']} for i in followings]
-        )
-        log.info(f'{user} following saved')
-        log.info(result)
+        log.info(f'{user} {follow_type} saved.')
 
 if __name__ == '__main__':
-    # # 创建解析器
-    # parser = argparse.ArgumentParser(description="ICEHUB")
+    # 创建解析器
+    parser = argparse.ArgumentParser(description="ICEHUB")
     
-    # # 添加参数
-    # parser.add_argument('--username', type=str, help="输入Github用户名", default='jellyqwq', required=True)
-    # parser.add_argument('--output_dir', type=str, help="输入输出目录(需要带斜杠/)", default='data', required=False)
+    # 添加参数
+    parser.add_argument('--user', type=str, help="github username", required=True)
+    parser.add_argument('--followers', help="get user followers", action='store_true')
+    parser.add_argument('--followings', help="get user followings", action='store_true')
     
-    # # 解析参数
-    # args = parser.parse_args()
+    # 解析参数
+    args = parser.parse_args()
 
-    # # 使用参数
-    # os.makedirs(args.output_dir, exist_ok=True)
-
-    # task(username=args.username, output_dir=args.output_dir)
+    # 使用参数
     ice = Icehub()
-    # log.info(ice.get_user_followers('MeteorsLiu'))
-    ice.followers_saved('MeteorsLiu')
-    log.info(ice.get_rate_limit()['core'])
+
+    if args.followers:
+        ice.follow_saved(user=args.user, follow_type='followers')
+    
+    if args.followings:
+        ice.follow_saved(user=args.user, follow_type='followings')
+
+    log.info(ice.get_rate_limit())
