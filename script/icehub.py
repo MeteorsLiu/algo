@@ -212,7 +212,7 @@ class Icehub():
         
         try:
             # When the initial core rate limit time is 0, wait for the API rate limit to reset.
-            self.api_use('core')
+            self.api_use('graphql')
 
             while True:
                 rtn = self.gh_session.get(url=f'https://api.github.com/search/issues?q=involves:{user}+{qualifier}&per_page={per_page}&page={page}')
@@ -268,7 +268,7 @@ class Icehub():
 
                 log.info(f'{user} {qualifier} page {page} crawled, get next page.')
                 page += 1
-                self.api_use('core', 1)
+                self.api_use('graphql', 1)
 
         except KeyboardInterrupt:
             log.info('User Interrupt.')
