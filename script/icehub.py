@@ -36,6 +36,19 @@ MONGODB_PORT = os.environ.get('MONGODB_PORT')
 MONGODB_USENAME = os.environ.get('MONGODB_USENAME')
 MONGODB_PASSWORD = os.environ.get('MONGODB_PASSWORD')
 
+def string_to_timestamp(iso_time: str = "2024-04-14T07:20:15Z") -> int:
+    # 去掉字符串末尾的 "Z"，并替换 "T" 为空格，使其符合 strptime 的格式
+    formatted_time = iso_time.replace("T", " ").replace("Z", "")
+
+    # 解析为 UTC 时间结构
+    time_struct = time.strptime(formatted_time, "%Y-%m-%d %H:%M:%S")
+
+    # 转换为本地时间戳
+    timestamp = time.mktime(time_struct)
+
+    return timestamp
+
+
 class Icehub():
     headers = {
             # github 遵守 accept 返回类型
@@ -64,6 +77,9 @@ class Icehub():
         # user_info collection structure
         # username update_time issues pullrequests discussions
         self.user_info = self.algodb["user_info"]
+        self.user_issue = self.algodb['user_issue']
+        self.user_pr = self.algodb['user_pr']
+        self.user_discussion = self.algodb['user_discussion']
 
         self.gh_session = requests.Session()
         self.gh_session.auth = (GITHUB_USERNAME, GITHUB_ACCESS_TOKEN)
@@ -124,7 +140,8 @@ class Icehub():
             time.sleep(wait_time)
             self.get_rate_limit()
 
-    def get_user_follow(self, user: str, follow_type: Literal['followers', 'following'], per_page: int = 100, page: int = 1) -> list:
+    def get_user_follow(self, user: str, follow_type: Literal['followers', 'following'], 
+                        per_page: int = 100, page: int = 1) -> list:
         follow_list = []
 
         try:
@@ -157,8 +174,7 @@ class Icehub():
                     log.info(f'{user} {follow_type} crawling completed.')
                     break
 
-                log.info(f'page {page} crawled, get next page after 5 seconds.')
-                time.sleep(5)
+                log.info(f'page {page} crawled, get next page.')
                 page += 1
                 self.api_use('core', 1)
 
@@ -182,6 +198,79 @@ class Icehub():
             )
         log.info(f'{user} {follow_type} saved.')
 
+    def get_user_issues_or_pullrequest(self, user: str, qualifier: Literal['is:issue', 'is:pull-request'], 
+                                         per_page: int = 100, page: int = 1):
+        item_list = []
+        try:
+            # When the initial core rate limit time is 0, wait for the API rate limit to reset.
+            self.api_use('search')
+
+            while True:
+                rtn = self.gh_session.get(
+                    url=f'https://api.github.com/search/issues',
+                    params={
+                        'q': f'involves:{user}+{qualifier}',
+                        'per_page': per_page,
+                        'page': page
+                    }
+                )
+                if rtn.status_code != 200:
+                    log.error("Error! Status: " + str(rtn.status_code))
+                    return item_list
+                
+                data = rtn.json()
+                # log.info(data)
+                total_count = data['total_count']
+                items = data.get('items', [])
+ 
+                for item in tqdm(items, desc=f"Updating User {qualifier}"):
+                    reactions = item['reactions']
+                    reactions.pop('url')
+
+                    self.user_issue.update_one(
+                        {
+                            'issue_id': item['id'],
+                            'user': user
+                        }, 
+                        {**{
+                        'issue_id': item['id'], # issue id
+                        'user': user,
+                        # https://api.github.com/repos/
+                        "repository_name": item["repository_url"][29:],
+                        'state': item['state'],
+                        "created_at": string_to_timestamp(item['created_at']) if item['created_at'] else 0,
+                        "updated_at": string_to_timestamp(item['updated_at']) if item['updated_at'] else 0,
+                        "closed_at": string_to_timestamp(item['closed_at']) if item['closed_at'] else 0,
+                        }, **{'react_'+reaction[0]: reaction[1] for reaction in reactions.items()}
+                    }, upsert=True)
+
+                if len(data) < per_page:
+                    self.user_info.update_one(
+                        {
+                            'username': user,
+                        },
+                        {
+                            '{}_count'.format('issue' if 'issue' in qualifier else 'pr'): total_count
+                        },
+                        upsert=True
+                    )
+                    log.info(f'{user} {qualifier} saved.')
+                    break
+
+                log.info(f'{user} issuses page {page} crawled, get next page.')
+                page += 1
+                self.api_use('search', 1)
+
+        except KeyboardInterrupt:
+            log.info('User Interrupt.')
+            return item_list
+        
+        except:
+            log.error('Unknown error')
+            return item_list
+            
+        return item_list
+
 if __name__ == '__main__':
     # 创建解析器
     parser = argparse.ArgumentParser(description="ICEHUB")
@@ -190,6 +279,8 @@ if __name__ == '__main__':
     parser.add_argument('--user', type=str, help="github username", required=True)
     parser.add_argument('--followers', help="get user followers", action='store_true')
     parser.add_argument('--following', help="get user followings", action='store_true')
+    parser.add_argument('--user_issue', help="get user issue", action='store_true')
+    parser.add_argument('--user_pr', help="get user pull request", action='store_true')
     
     # 解析参数
     args = parser.parse_args()
@@ -202,5 +293,11 @@ if __name__ == '__main__':
     
     if args.following:
         ice.follow_saved(user=args.user, follow_type='following')
+
+    if args.user_issue:
+        ice.get_user_issues_or_pullrequest(args.user, 'is:issue')
+
+    if args.user_pr:
+        ice.get_user_issues_or_pullrequest(args.user, 'is:pull-request')
 
     log.info(ice.get_rate_limit())

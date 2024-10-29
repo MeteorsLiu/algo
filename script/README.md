@@ -23,6 +23,12 @@ MONGODB_PASSWORD=
 
 * [X] 使用github自带的搜索进行用户筛选
 
+这个接口返回issues和pullrequest
+
+```
+https://api.github.com/search/issues?q=involves:MeteorsLiu&per_page=100&page=1
+```
+
 # 用法
 
 ```
