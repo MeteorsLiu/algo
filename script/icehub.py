@@ -167,7 +167,7 @@ class Icehub():
         return follow_list
 
     def follow_saved(self, user: str, follow_type: Literal['followers', 'following']):
-        follow_meta = self.get_user_follow(user)
+        follow_meta = self.get_user_follow(user=user, follow_type=follow_type)
         for i in tqdm(follow_meta, desc="Updating User Info"):
             self.user_info.update_one(
                 {'_id': i['id']},
