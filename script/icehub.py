@@ -132,11 +132,12 @@ class Icehub():
                                         'scim', 'dependency_snapshots', 'audit_log', 'audit_log_streaming',
                                         'code_search'], times: int = 0):
         self.rate_limit[api_type]['remaining'] -= times
+        log.info(self.rate_limit)
         if self.rate_limit[api_type]['remaining'] == 0:
             # reset: 1730127528
             reset_time = self.rate_limit[api_type]['reset']
             local_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(reset_time)))
-            wait_time = reset_time - int(time.time()) + 2
+            wait_time = reset_time - int(time.time()) + 5
             log.info(f'api {api_type} reset at {local_time}, wait {wait_time} seconds...')
             time.sleep(wait_time)
             self.get_rate_limit()
@@ -157,6 +158,7 @@ class Icehub():
                         'page': page
                     }
                 )
+                self.api_use('core', 1)
                 if rtn.status_code != 200:
                     log.error("Error! Status: " + str(rtn.status_code))
                     return follow_list
@@ -177,7 +179,7 @@ class Icehub():
 
                 log.info(f'page {page} crawled, get next page.')
                 page += 1
-                self.api_use('core', 1)
+                
 
         except KeyboardInterrupt:
             log.info('User Interrupt.')
@@ -216,6 +218,7 @@ class Icehub():
 
             while True:
                 rtn = self.gh_session.get(url=f'https://api.github.com/search/issues?q=involves:{user}+{qualifier}&per_page={per_page}&page={page}')
+                self.api_use('search', 1)
                 if rtn.status_code != 200:
                     log.error("Error! Status: " + str(rtn.status_code))
                     log.error(rtn.text)
@@ -251,7 +254,7 @@ class Icehub():
                             }
                         }, upsert=True)
 
-                if len(data) < per_page:
+                if len(items) < per_page:
                     self.user_info.update_one(
                         {
                             'username': user,
@@ -268,7 +271,7 @@ class Icehub():
 
                 log.info(f'{user} {qualifier} page {page} crawled, get next page.')
                 page += 1
-                self.api_use('search', 1)
+                
 
         except KeyboardInterrupt:
             log.info('User Interrupt.')
