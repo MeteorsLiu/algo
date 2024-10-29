@@ -1,3 +1,4 @@
 # script
 script/.env
 script/data
+script/__pycache__

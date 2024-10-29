@@ -13,3 +13,4 @@ _set = {i['username'] for i in li}
 for user in tqdm(_set, 'save_user_pull-request'):
     ice.save_user_issues_or_pullrequest(user, qualifier='is:pull-request')
 
+log.info(ice.get_rate_limit())
