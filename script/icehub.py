@@ -199,7 +199,7 @@ class Icehub():
             )
         log.info(f'{user} {follow_type} saved.')
 
-    def get_user_issues_or_pullrequest(self, user: str, qualifier: Literal['is:issue', 'is:pull-request'], 
+    def save_user_issues_or_pullrequest(self, user: str, qualifier: Literal['is:issue', 'is:pull-request'], 
                                          per_page: int = 100, page: int = 1):
         item_list = []
         if qualifier == 'is:issue':
@@ -354,10 +354,10 @@ if __name__ == '__main__':
         ice.follow_saved(user=args.user, follow_type='following')
 
     if args.user_issue:
-        ice.get_user_issues_or_pullrequest(args.user, 'is:issue')
+        ice.save_user_issues_or_pullrequest(args.user, 'is:issue')
 
     if args.user_pr:
-        ice.get_user_issues_or_pullrequest(args.user, 'is:pull-request')
+        ice.save_user_issues_or_pullrequest(args.user, 'is:pull-request')
 
     if args.user_null:
         ice.get_user_info_empty(args.user_null)
