@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta
 from time import sleep
+from geopy.geocoders import Nominatim
 
 import requests
 import re
@@ -73,3 +74,32 @@ def user_geo(username: str):
     if response.status_code == 200:
         return response.json().get('location')
     return None
+
+
+def location_nation(location_name):
+    """
+    Fetches the country name from a given location name using the Nominatim geocoding service.
+
+    Args:
+        location_name (str): The string of the location in natural language.
+
+    Returns:
+        str: The country name if found, otherwise None.
+    """
+    geolocator = Nominatim(user_agent="geoapiExercises")
+    location = geolocator.geocode(location_name)
+
+    if location:
+        # Full address breakdown
+        address = location.raw.get("display_name", "")
+
+        # Split the address and assume the last element is the country
+        address_parts = address.split(", ")
+        country = address_parts[-1] if address_parts else None
+
+        if country:
+            return country
+        else:
+            return None
+    else:
+        return None
