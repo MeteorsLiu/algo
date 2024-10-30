@@ -132,7 +132,7 @@ class Icehub():
                                         'scim', 'dependency_snapshots', 'audit_log', 'audit_log_streaming',
                                         'code_search'], times: int = 0):
         self.rate_limit[api_type]['remaining'] -= times
-        log.info(self.rate_limit)
+        log.debug(self.rate_limit)
         if self.rate_limit[api_type]['remaining'] == 0:
             # reset: 1730127528
             reset_time = self.rate_limit[api_type]['reset']
@@ -324,6 +324,7 @@ class Icehub():
             )
             self.api_use('core', 1)
             log.info(f'{repo_owner}/{repo_name} is saved')
+            time.sleep(0.8)
 
         except KeyboardInterrupt:
             log.info('User Interrupt.')
@@ -332,19 +333,69 @@ class Icehub():
             log.exception('Unknown error', stack_info=True)
             return
 
+    def get_unsaved_repo(self, qualifier: Literal['user_issue', 'user_pr']):
+        if qualifier == 'user_issue':
+            collection = self.user_issue
+        elif qualifier == 'user_pr':
+            collection = self.user_pr
+        else:
+            log.error("get_unsaved_repo qualifiter cannot empty")
+            return
+        
+        unique_repos_cursor  = collection.aggregate([
+            {
+                '$group': {
+                    '_id': {
+                        'repo_owner': '$repo_owner',
+                        'repo_name': '$repo_name'
+                    }
+                }
+            }
+        ])
+
+        total_items = unique_repos_cursor.collection.count_documents({})
+        # 使用for循环逐条处理结果，减少内存占用
+        for repo in tqdm(unique_repos_cursor, desc="Updating repository", total=total_items):
+            repo_owner = repo['_id']['repo_owner']
+            repo_name = repo['_id']['repo_name']
+
+            # 在 repo_info 表中查找是否存在该 repo_owner 和 repo_name 组合
+            exists_in_repo_info = self.repo_info.find_one({
+                'repo_owner': repo_owner,
+                'repo_name': repo_name
+            }, {'repo_owner': 1, 'repo_name': 1})
+            
+            # 如果不存在，则打印或记录该组合
+            if not exists_in_repo_info:
+                log.info(f"Not in repo_info - Repo Owner: {repo_owner}, Repo Name: {repo_name}")
+                self.save_repository_info(
+                    repo_owner=repo_owner,
+                    repo_name=repo_name
+                )
+
+    def get_user_list(self, limit=0) -> list:
+        data = list(self.user_info.find(
+            {},
+            ['username']
+        ).limit(limit))
+        log.debug(data)
+        return data
+    
 if __name__ == '__main__':
     # 创建解析器
     parser = argparse.ArgumentParser(description="ICEHUB")
     
     # 添加参数
-    parser.add_argument('--user', type=str, help="github username", required=True)
+    parser.add_argument('--user', type=str, help="github username", required=False)
     parser.add_argument('--followers', help="get user followers", action='store_true')
     parser.add_argument('--following', help="get user followings", action='store_true')
     parser.add_argument('--user_issue', help="get user issue", action='store_true')
     parser.add_argument('--user_pr', help="get user pull request", action='store_true')
     parser.add_argument('--user_null', type=str, help="get user null column", required=False)
+    parser.add_argument('--username_list', help="get username_list", action='store_true')
     parser.add_argument('--repo_owner', type=str, help="get repository owner", required=False)
     parser.add_argument('--repo_name', type=str, help="get repository name", required=False)
+    parser.add_argument('--repo_unsaved', help="get unsaved repository", action='store_true')
     
     # 解析参数
     args = parser.parse_args()
@@ -369,5 +420,12 @@ if __name__ == '__main__':
 
     if args.repo_owner and args.repo_name:
         ice.save_repository_info(args.repo_owner, args.repo_name)
+
+    if args.repo_unsaved:
+        ice.get_unsaved_repo('user_issue')
+        ice.get_unsaved_repo('user_pr')
+    
+    if args.username_list:
+        log.info(ice.get_user_list(limit=10))
 
     # log.info(ice.get_rate_limit())
