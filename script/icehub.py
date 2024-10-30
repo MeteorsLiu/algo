@@ -191,6 +191,52 @@ class Icehub():
             
         return follow_list
 
+    def save_user_follow(self, user: str, follow_type: Literal['followers', 'following'], 
+                        per_page: int = 100, page: int = 1):
+
+        try:
+            # When the initial core rate limit time is 0, wait for the API rate limit to reset.
+            self.api_use('core')
+
+            while True:
+                rtn = self.gh_session.get(
+                    url=f'https://api.github.com/users/{user}/{follow_type}',
+                    params={
+                        'per_page': per_page,
+                        'page': page
+                    }
+                )
+                self.api_use('core', 1)
+                if rtn.status_code != 200:
+                    log.error("Error! Status: " + str(rtn.status_code))
+                    return 
+                
+                data = rtn.json()
+                for i in tqdm(data, desc=f'Updating {user} {follow_type} page {page}'):
+                    if i['type'] == "User":
+                        self.user_info.update_one(
+                            {'_id': i['id']},
+                            {"$setOnInsert": {'username': i['login']}},
+                            upsert=True
+                        )
+
+                if len(data) < per_page:
+                    log.info(f'{user} {follow_type} crawling completed.')
+                    break
+
+                log.info(f'page {page} crawled, get next page.')
+                page += 1
+                
+        except KeyboardInterrupt:
+            log.info('User Interrupt.')
+            return 
+        
+        except:
+            log.error('Unknown error')
+            return 
+            
+        return 
+    
     def follow_saved(self, user: str, follow_type: Literal['followers', 'following']):
         follow_meta = self.get_user_follow(user=user, follow_type=follow_type)
         for i in tqdm(follow_meta, desc="Updating User Info"):
