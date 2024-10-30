@@ -138,8 +138,9 @@ class Icehub():
             reset_time = self.rate_limit[api_type]['reset']
             local_time = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(float(reset_time)))
             wait_time = reset_time - int(time.time()) + 5
-            log.info(f'api {api_type} reset at {local_time}, wait {wait_time} seconds...')
-            time.sleep(wait_time)
+            if wait_time > 0:
+                log.info(f'api {api_type} reset at {local_time}, wait {wait_time} seconds...')
+                time.sleep(wait_time)
             self.get_rate_limit()
 
     def get_user_follow(self, user: str, follow_type: Literal['followers', 'following'], 
@@ -209,7 +210,8 @@ class Icehub():
                 self.api_use('core', 1)
                 if rtn.status_code != 200:
                     log.error("Error! Status: " + str(rtn.status_code))
-                    return 
+                    log.error(rtn.text)
+                    return False
                 
                 data = rtn.json()
                 for i in tqdm(data, desc=f'Updating {user} {follow_type} page {page}'):
@@ -226,16 +228,17 @@ class Icehub():
 
                 log.info(f'page {page} crawled, get next page.')
                 page += 1
+                # time.sleep(0.8)
                 
         except KeyboardInterrupt:
             log.info('User Interrupt.')
-            return 
+            return False
         
         except:
             log.error('Unknown error')
-            return 
+            return False
             
-        return 
+        return True
     
     def follow_saved(self, user: str, follow_type: Literal['followers', 'following']):
         follow_meta = self.get_user_follow(user=user, follow_type=follow_type)
@@ -278,7 +281,7 @@ class Icehub():
                 for item in tqdm(items, desc=f"Updating User {qualifier}"):
                     reactions = item['reactions']
                     reactions.pop('url')
-                    owner, repo_name = item["repository_url"][29:].split('/')
+                    repo_owner, repo_name = item["repository_url"][29:].split('/')
 
                     collection.update_one(
                         {
@@ -290,8 +293,9 @@ class Icehub():
                                 'issue_id': item['id'],
                                 'user': user,
                                 # https://api.github.com/repos/{owner}/{repo_name}
-                                "repo_owner": owner,
+                                "repo_owner": repo_owner,
                                 "repo_name": repo_name,
+                                'full_name': f'{repo_owner}/{repo_name}',
                                 "created_at": string_to_timestamp(item['created_at']) if item['created_at'] else 0,
                                 "updated_at": string_to_timestamp(item['updated_at']) if item['updated_at'] else 0,
                                 "closed_at": string_to_timestamp(item['closed_at']) if item['closed_at'] else 0,
@@ -336,7 +340,7 @@ class Icehub():
         #     data = self.user_info.find({}, limit=100)
         return data
 
-    def save_repository_info(self, repo_owner: str, repo_name: str):
+    def save_repository_info(self, repo_owner: str, repo_name: str, full_name: str):
         try:
             self.api_use('core')
 
@@ -344,7 +348,7 @@ class Icehub():
             if rtn.status_code != 200:
                 log.error("Error! Status: " + str(rtn.status_code))
                 log.error(rtn.text)
-                return
+                return False
             data = rtn.json()
             
             self.repo_info.update_one(
@@ -354,6 +358,7 @@ class Icehub():
                         '_id': data['id'],
                         'repo_owner': repo_owner,
                         'repo_name': repo_name,
+                        'full_name': full_name if full_name else f'{repo_owner}/{repo_name}',
                         'language': data['language'],
                         'archived': data['archived'],
                         'forks_count': data['forks_count'],
@@ -369,17 +374,17 @@ class Icehub():
                 upsert=True
             )
             self.api_use('core', 1)
-            log.info(f'{repo_owner}/{repo_name} is saved')
-            time.sleep(0.8)
+            log.debug(f'{repo_owner}/{repo_name} is saved')
+            # time.sleep(0.8)
 
         except KeyboardInterrupt:
             log.info('User Interrupt.')
-            return
+            return False
         except:
             log.exception('Unknown error', stack_info=True)
-            return
+            return False
 
-    def get_unsaved_repo(self, qualifier: Literal['user_issue', 'user_pr']):
+    def save_repository(self, qualifier: Literal['user_issue', 'user_pr']):
         if qualifier == 'user_issue':
             collection = self.user_issue
         elif qualifier == 'user_pr':
@@ -388,35 +393,39 @@ class Icehub():
             log.error("get_unsaved_repo qualifiter cannot empty")
             return
         
-        unique_repos_cursor  = collection.aggregate([
+        distinct_fullnames_cursor = collection.aggregate([
             {
                 '$group': {
-                    '_id': {
-                        'repo_owner': '$repo_owner',
-                        'repo_name': '$repo_name'
-                    }
+                    '_id': '$full_name',  # 按 full_name 分组
+                    # 'count': { '$sum': 1 }  # 计算每个 full_name 的出现次数
                 }
             }
         ])
 
-        total_items = unique_repos_cursor.collection.count_documents({})
+        # 使用 distinct 方法获取所有不同的 fullname
+        distinct_fullnames = collection.distinct('full_name')
+
+        # 计算不同 fullname 的数量
+        distinct_count = len(distinct_fullnames)
+        log.info(f'distinct_fullnames count: {distinct_count}')
+
         # 使用for循环逐条处理结果，减少内存占用
-        for repo in tqdm(unique_repos_cursor, desc="Updating repository", total=total_items):
-            repo_owner = repo['_id']['repo_owner']
-            repo_name = repo['_id']['repo_name']
+        for repo in tqdm(distinct_fullnames_cursor, desc='Save Repository', total=distinct_count):
+            full_name = repo['_id']
 
             # 在 repo_info 表中查找是否存在该 repo_owner 和 repo_name 组合
             exists_in_repo_info = self.repo_info.find_one({
-                'repo_owner': repo_owner,
-                'repo_name': repo_name
-            }, {'repo_owner': 1, 'repo_name': 1})
+                'full_name': full_name,
+            }, {'full_name': 1})
             
+            repo_owner, repo_name = full_name.split('/')
             # 如果不存在，则打印或记录该组合
             if not exists_in_repo_info:
-                log.info(f"Not in repo_info - Repo Owner: {repo_owner}, Repo Name: {repo_name}")
+                log.debug(f"Not in repo_info - Repo Owner: {repo_owner}, Repo Name: {repo_name}")
                 self.save_repository_info(
                     repo_owner=repo_owner,
-                    repo_name=repo_name
+                    repo_name=repo_name,
+                    full_name=full_name
                 )
 
     def get_user_list(self, limit=0) -> list:
