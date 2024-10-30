@@ -58,7 +58,7 @@ def user_commits(username: str, interval_days: float = 365, sleep_time: float = 
     return commits
 
 
-def user_geo(username: str):
+def user_location(username: str):
     """
     Fetches the geographical information of a user from GitHub.
 
