@@ -211,7 +211,7 @@ class Icehub():
                 if rtn.status_code != 200:
                     log.error("Error! Status: " + str(rtn.status_code))
                     log.error(rtn.text)
-                    return False
+                    return True
                 
                 data = rtn.json()
                 for i in tqdm(data, desc=f'Updating {user} {follow_type} page {page}'):
@@ -236,7 +236,7 @@ class Icehub():
         
         except:
             log.error('Unknown error')
-            return False
+            return True
             
         return True
     
@@ -271,14 +271,14 @@ class Icehub():
                 if rtn.status_code != 200:
                     log.error("Error! Status: " + str(rtn.status_code))
                     log.error(rtn.text)
-                    return item_list
+                    return True
                 
                 data = rtn.json()
                 # log.info(data)
                 total_count = data['total_count']
                 items = data.get('items', [])
  
-                for item in tqdm(items, desc=f"Updating User {qualifier}"):
+                for item in tqdm(items, desc=f"Updating {user} {qualifier}"):
                     reactions = item['reactions']
                     reactions.pop('url')
                     repo_owner, repo_name = item["repository_url"][29:].split('/')
@@ -325,13 +325,13 @@ class Icehub():
 
         except KeyboardInterrupt:
             log.info('User Interrupt.')
-            return item_list
+            return False
         
         except:
             log.exception('Unknown error', stack_info=True)
-            return item_list
+            return True
             
-        return item_list
+        return True
 
     def get_empty_col_user(self, col_name: str, limit: int = 0) -> list:
         data = self.user_info.find({col_name: None}, limit=limit).to_list()
@@ -346,7 +346,7 @@ class Icehub():
             if rtn.status_code != 200:
                 log.error("Error! Status: " + str(rtn.status_code))
                 log.error(rtn.text)
-                return False
+                return True
             data = rtn.json()
             
             self.repo_info.update_one(
@@ -380,7 +380,9 @@ class Icehub():
             return False
         except:
             log.exception('Unknown error', stack_info=True)
-            return False
+            return True
+
+        return True
 
     def save_repository(self, qualifier: Literal['user_issue', 'user_pr']):
         if qualifier == 'user_issue':
@@ -389,7 +391,7 @@ class Icehub():
             collection = self.user_pr
         else:
             log.error("get_unsaved_repo qualifiter cannot empty")
-            return
+            return True
         
         distinct_fullnames_cursor = collection.aggregate([
             {
