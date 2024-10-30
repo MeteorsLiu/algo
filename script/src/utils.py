@@ -55,3 +55,21 @@ def user_commits(username: str, interval_days: float = 365, sleep_time: float = 
         url = response.links.get('next', {}).get('url')
         sleep(sleep_time)
     return commits
+
+
+def user_geo(username: str):
+    """
+    Fetches the geographical information of a user from GitHub.
+
+    Args:
+        username (str): The GitHub username.
+
+    Returns:
+        dict: The geographical information state by the user.
+    """
+    url = f"https://api.github.com/users/{username}"
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        return response.json().get('location')
+    return None
