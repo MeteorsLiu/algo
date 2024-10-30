@@ -316,10 +316,10 @@ class Icehub():
                         },
                         upsert=True
                     )
-                    log.info(f'{user} {qualifier} saved.')
+                    log.debug(f'{user} {qualifier} saved.')
                     break
 
-                log.info(f'{user} {qualifier} page {page} crawled, get next page.')
+                log.debug(f'{user} {qualifier} page {page} crawled, get next page.')
                 page += 1
                 
 
@@ -333,11 +333,9 @@ class Icehub():
             
         return item_list
 
-    def get_empty_col_user(self, col_name: str) -> list:
-        data = self.user_info.find({col_name: None}, limit=100).to_list()
+    def get_empty_col_user(self, col_name: str, limit: int = 0) -> list:
+        data = self.user_info.find({col_name: None}, limit=limit).to_list()
         log.debug(data)
-        # if len(data.to_list()) == 0:
-        #     data = self.user_info.find({}, limit=100)
         return data
 
     def save_repository_info(self, repo_owner: str, repo_name: str, full_name: str):
@@ -407,10 +405,10 @@ class Icehub():
 
         # 计算不同 fullname 的数量
         distinct_count = len(distinct_fullnames)
-        log.info(f'distinct_fullnames count: {distinct_count}')
+        log.info(f'distinct_fullnames count {qualifier}: {distinct_count}')
 
         # 使用for循环逐条处理结果，减少内存占用
-        for repo in tqdm(distinct_fullnames_cursor, desc='Save Repository', total=distinct_count):
+        for repo in tqdm(distinct_fullnames_cursor, desc=f'Save {qualifier} Repository', total=distinct_count):
             full_name = repo['_id']
 
             # 在 repo_info 表中查找是否存在该 repo_owner 和 repo_name 组合
