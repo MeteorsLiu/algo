@@ -5,13 +5,15 @@ from geopy.geocoders import Nominatim
 import requests
 import re
 
-def commit_timezone(username: str, repo: str, commit_hash: str):
+
+def commit_timezone(repo_fullname: str, commit_hash: str):
     """
     Fetches the timezone information from a specific commit on GitHub.
 
     Args:
         username (str): The GitHub username.
         repo (str): The repository name.
+        repo_fullname (str): The repository full name.
         commit_hash (str): The commit hash.
 
     Returns:
@@ -19,6 +21,7 @@ def commit_timezone(username: str, repo: str, commit_hash: str):
         int: -1 if no matches or multiple matches are found.
     """
     url = f"https://github.com/{username}/{repo}/commit/{commit_hash}.patch"
+    url = f"https://github.com/{repo_fullname}/commit/{commit_hash}.patch"
     response = requests.get(url)
 
     pattern = r"(Date:\s.*?([+-]\d{4}))"
