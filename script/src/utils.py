@@ -9,19 +9,119 @@ import re
 
 
 def commit_timezone(repo_fullname: str, commit_hash: str):
+language_countries_LUT = {
+    "zh": "China",
+    "en": "United States",
+    "fr": "France",
+    "de": "Germany",
+    "ja": "Japan",
+    "es": "Spain",
+    "ko": "South Korea",
+    "it": "Italy",
+    "ru": "Russia",
+    "pt": "Portugal",
+    "pt-BR": "Brazil",
+    "ar": "Saudi Arabia",
+    "nl": "Netherlands",
+    "sv": "Sweden",
+    "no": "Norway",
+    "da": "Denmark",
+    "fi": "Finland",
+    "el": "Greece",
+    "he": "Israel",
+    "tr": "Turkey",
+    "vi": "Vietnam",
+    "th": "Thailand",
+    "id": "Indonesia",
+    "ms": "Malaysia",
+    "pl": "Poland",
+    "hu": "Hungary",
+    "cs": "Czech Republic",
+    "sk": "Slovakia",
+    "ro": "Romania",
+    "uk": "Ukraine",
+    "bg": "Bulgaria",
+    "sr": "Serbia",
+    "hr": "Croatia",
+    "lt": "Lithuania",
+    "lv": "Latvia",
+    "et": "Estonia",
+    "sl": "Slovenia",
+    "is": "Iceland",
+    "ga": "Ireland",
+    "mt": "Malta",
+    "sq": "Albania",
+    "mk": "North Macedonia",
+    "bs": "Bosnia and Herzegovina",
+    "af": "South Africa",
+    "sw": "Kenya",
+    "am": "Ethiopia",
+    "fa": "Iran",
+    "ur": "Pakistan",
+    "hi": "India",
+    "bn": "Bangladesh",
+    "ta": "Sri Lanka",
+    "ml": "India",
+    "te": "India",
+    "kn": "India",
+    "mr": "India",
+    "gu": "India",
+    "pa": "India",
+    "si": "Sri Lanka",
+    "ne": "Nepal",
+    "dz": "Bhutan",
+    "my": "Myanmar",
+    "km": "Cambodia",
+    "lo": "Laos",
+    "mn": "Mongolia",
+    "ky": "Kyrgyzstan",
+    "uz": "Uzbekistan",
+    "tk": "Turkmenistan",
+    "kk": "Kazakhstan",
+    "hy": "Armenia",
+    "az": "Azerbaijan",
+    "ka": "Georgia",
+    "mo": "Moldova",
+    "tg": "Tajikistan",
+    "ps": "Afghanistan",
+    "ti": "Eritrea",
+    "so": "Somalia",
+    "ha": "Nigeria",
+    "ig": "Nigeria",
+    "yo": "Nigeria",
+    "rw": "Rwanda",
+    "rn": "Burundi",
+    "ln": "Democratic Republic of the Congo",
+    "mg": "Madagascar",
+    "sg": "Central African Republic",
+    "ss": "South Africa",
+    "zu": "South Africa",
+    "xh": "South Africa",
+    "ve": "South Africa",
+    "st": "Lesotho",
+    "ts": "South Africa",
+    "tn": "Botswana",
+}
+
+
+def language_countries(lang_code: str) -> str | None:
     """
     Fetches the timezone information from a specific commit on GitHub.
 
+    依照查找表（LUT）返回语言对应的国家。
     Args:
         repo_fullname (str): The repository full name.
         commit_hash (str): The commit hash.
 
+        lang_code: 语言代码。
     Returns:
         str: The timezone offset in the format `+/-HHMM` if exactly one match is found.
         int: -1 if no matches or multiple matches are found.
+        语言对应的国家。若没有找到对应的国家则返回 None。
     """
     url = f"https://github.com/{repo_fullname}/commit/{commit_hash}.patch"
     response = requests.get(url)
+    return language_countries_LUT.get(lang_code, None)
 
     pattern = r"(Date:\s.*?([+-]\d{4}))"
     matches = [(match.group(), match.start()) for match in re.finditer(pattern, response.text)]
