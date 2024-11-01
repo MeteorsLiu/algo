@@ -211,8 +211,14 @@ def location_nation(location_name: str, max_results: int = 32):
     cc = coco.CountryConverter()
     return cc.convert(names=list(set(countries)), to='name_short')
 
+def email_nation(email: str):
+    """
+    根据电子邮件地址获取可能的国家。
+    Args:
+        email: 电子邮件地址。
     Returns:
         list: A list of dictionaries containing country names and their probabilities.
+        可能的国家名称。
     """
     geolocator = Nominatim(user_agent="algo-demo-geo")
     locations = geolocator.geocode(location_name, exactly_one=False, limit=max_results)
@@ -228,10 +234,16 @@ def location_nation(location_name: str, max_results: int = 32):
 
     counts = np.array(list(country_counts.values()), dtype=np.float32)
     softmax_probs = np.exp(counts) / np.sum(np.exp(counts))
+    extracted = tldextract.extract(email)
+    tld = extracted.suffix
 
     result = [
         {"country": country, "probability": prob}
         for country, prob in zip(country_counts.keys(), softmax_probs)
     ]
+    result = None
+    if len(tld) == 2:
+        result = pycountry.countries.get(alpha_2=tld.upper())
 
     return result
+    return result.name if result else None
