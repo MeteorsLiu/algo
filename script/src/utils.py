@@ -133,16 +133,20 @@ def language_countries(lang_code: str) -> str | None:
 
 
 def user_commits(username: str, interval_days: float = 365, sleep_time: float = 0.1):
+def text_lang(text: str):
     """
     Fetches the commits made by a user within a specified interval.
 
+    获取文本的语言分布。
     Args:
         username (str): The GitHub username.
         interval_days (float): The number of days to look back from today. Defaults to 365.
         sleep_time (float): The time to sleep between requests to avoid hitting rate limits. Defaults to 1 second.
 
+        text: 文本内容。
     Returns:
         list: A list of commits made by the user within the specified interval.
+        语言分布列表，若未找到语言则返回空列表。
     """
     url_template = 'https://api.github.com/search/commits?q=author:{author}+committer-date:{start}..{end}'
 
@@ -158,6 +162,10 @@ def user_commits(username: str, interval_days: float = 365, sleep_time: float = 
         url = response.links.get('next', {}).get('url')
         sleep(sleep_time)
     return commits
+    if not text:
+        return None
+    newtext = re.sub(r'\n', ' ', text)
+    return detect_multilingual(newtext)
 
 
 def user_location(username: str):
