@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from time import sleep
 from geopy.geocoders import Nominatim
+from collections import Counter
 
+import numpy as np
 import requests
 import re
 
@@ -11,8 +13,6 @@ def commit_timezone(repo_fullname: str, commit_hash: str):
     Fetches the timezone information from a specific commit on GitHub.
 
     Args:
-        username (str): The GitHub username.
-        repo (str): The repository name.
         repo_fullname (str): The repository full name.
         commit_hash (str): The commit hash.
 
@@ -20,7 +20,6 @@ def commit_timezone(repo_fullname: str, commit_hash: str):
         str: The timezone offset in the format `+/-HHMM` if exactly one match is found.
         int: -1 if no matches or multiple matches are found.
     """
-    url = f"https://github.com/{username}/{repo}/commit/{commit_hash}.patch"
     url = f"https://github.com/{repo_fullname}/commit/{commit_hash}.patch"
     response = requests.get(url)
 
@@ -79,30 +78,35 @@ def user_location(username: str):
     return None
 
 
-def location_nation(location_name):
+def location_nation(location_name: str, max_results: int = 32):
     """
-    Fetches the country name from a given location name using the Nominatim geocoding service.
+    Fetches the probable countries for a given location name using geocoding.
 
     Args:
-        location_name (str): The string of the location in natural language.
+        location_name (str): The name of the location to geocode.
+        max_results (int): The maximum number of results to return. Defaults to 32.
 
     Returns:
-        str: The country name if found, otherwise None.
+        list: A list of dictionaries containing country names and their probabilities.
     """
-    geolocator = Nominatim(user_agent="geoapiExercises")
-    location = geolocator.geocode(location_name)
+    geolocator = Nominatim(user_agent="algo-demo-geo")
+    locations = geolocator.geocode(location_name, exactly_one=False, limit=max_results)
 
-    if location:
-        # Full address breakdown
-        address = location.raw.get("display_name", "")
+    country_counts = Counter()
 
-        # Split the address and assume the last element is the country
-        address_parts = address.split(", ")
-        country = address_parts[-1] if address_parts else None
+    if locations:
+        for loc in locations:
+            address = loc.raw.get("display_name", "")
+            address_parts = address.split(", ")
+            country = address_parts[-1] if address_parts else "Unknown"
+            country_counts[country] += 1
 
-        if country:
-            return country
-        else:
-            return None
-    else:
-        return None
+    counts = np.array(list(country_counts.values()), dtype=np.float32)
+    softmax_probs = np.exp(counts) / np.sum(np.exp(counts))
+
+    result = [
+        {"country": country, "probability": prob}
+        for country, prob in zip(country_counts.keys(), softmax_probs)
+    ]
+
+    return result
