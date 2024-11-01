@@ -169,30 +169,47 @@ def text_lang(text: str):
 
 
 def user_location(username: str):
+def timezone_nation(timezone_offset: str):
     """
     Fetches the geographical information of a user from GitHub.
 
+    根据时区偏移值获取可能的国家。
     Args:
         username (str): The GitHub username.
 
+        timezone_offset: 时区偏移值，格式为 `+/-HHMM`。
     Returns:
         dict: The geographical information state by the user.
+        可能的国家列表。
     """
     url = f"https://api.github.com/users/{username}"
     response = requests.get(url)
+    hours_offset = int(timezone_offset[:3])
+    minutes_offset = int(timezone_offset[0] + timezone_offset[3:])
 
     if response.status_code == 200:
         return response.json().get('location')
     return None
+    utc_offset = timedelta(hours=hours_offset, minutes=minutes_offset)
+    now = datetime.now(pytz.utc)
 
+    all_timezones = {tz.zone for tz in map(pytz.timezone, pytz.all_timezones_set) if
+                     now.astimezone(tz).utcoffset() == utc_offset}
 
 def location_nation(location_name: str, max_results: int = 32):
     """
     Fetches the probable countries for a given location name using geocoding.
+    countries = []
+    for tz in all_timezones:
+        country_set = timezone_countries.get(tz, set())
+        if country_set:
+            countries.extend(country_set)
 
     Args:
         location_name (str): The name of the location to geocode.
         max_results (int): The maximum number of results to return. Defaults to 32.
+    cc = coco.CountryConverter()
+    return cc.convert(names=list(set(countries)), to='name_short')
 
     Returns:
         list: A list of dictionaries containing country names and their probabilities.
