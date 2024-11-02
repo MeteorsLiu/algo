@@ -62,3 +62,19 @@ def get_user_nation(username: str, token: str = None):
         return {'nation': most_often_timezone, "probability": most_often_nation_probability}
 
 print(get_user_nation("TwilightLemon"))
+
+
+def last_resort(username: str, token: str = None):
+    # 尝试从共同关注列表中推断国家信息
+    mutual_followings = utils_online.user_mutual_follows(username, token)
+    if mutual_followings:
+        nations = []
+        for user in mutual_followings:
+            nation = get_user_nation(user, token)
+            if nation is not None:
+                nations.append(nation['nation'])
+        if nations:
+            return {'nation': max(set(nations), key=nations.count), "probability": 1}
+        else:
+            print(f"没有找到共同关注列表中 GitHub 用户的国家信息。")
+
