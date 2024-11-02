@@ -96,6 +96,22 @@ def user_commits(username: str, maximum: int = 32, sleep_time: float = 0.1):
     return commits
 
 
+def user_mutual_follows(username, token):
+    def get_user_list(url):
+        user_list = []
+        while url:
+            response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
+            user_list.extend([user['login'] for user in response.json()])
+            url = response.links.get('next', {}).get('url')
+        return set(user_list)
+
+    following = get_user_list(f"https://api.github.com/users/{username}/following")
+    followers = get_user_list(f"https://api.github.com/users/{username}/followers")
+
+    mutual_follows = following.intersection(followers)
+    return list(mutual_follows)
+
+
 def location_nation(location_name: str) -> dict | None:
     """
     根据自然语言提供的位置名称获取可能的国家。
