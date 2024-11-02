@@ -1,5 +1,3 @@
-from time import sleep
-
 import utils
 import utils_online
 
