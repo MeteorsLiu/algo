@@ -1,3 +1,4 @@
+import re
 import base64
 import json
 from time import sleep
@@ -27,15 +28,17 @@ def commit_timezone(repo_fullname: str, commit_hash: str):
         return -1
 
 
-def user_info(username: str) -> dict:
+def user_info(username: str, token: str = None) -> dict:
     """
     获取 GitHub 用户信息。
     Args:
         username: GitHub 用户名。
+        token: GitHub API 访问令牌。
     Returns:
         用户信息。
     """
-    response = requests.get(f"https://api.github.com/users/{username}")
+    response = requests.get(url=f"https://api.github.com/users/{username}",
+                            headers={"Authorization": f"token {token}"})
     return response.json()
 
 
@@ -53,15 +56,17 @@ def user_repos(username: str):
     return json.loads(response.text)
 
 
-def repo_readme(repo_fullname: str):
+def repo_readme(repo_fullname: str, token: str = None):
     """
     获取 GitHub 仓库的 README 内容。
     Args:
         repo_fullname: 仓库全名。
+        token: GitHub API 访问令牌。
     Returns:
         README 内容。
     """
-    response = requests.get(f"https://api.github.com/repos/{repo_fullname}/readme")
+    response = requests.get(url=f"https://api.github.com/repos/{repo_fullname}/readme",
+                            headers={"Authorization": f"token {token}"})
     if response.status_code != 200:
         return None
     readme = response.json().get('content')
