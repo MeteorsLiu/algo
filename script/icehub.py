@@ -343,6 +343,8 @@ class Icehub():
             self.api_use('core')
 
             rtn = self.gh_session.get(url=f'https://api.github.com/repos/{repo_owner}/{repo_name}')
+            # must minus 1 after get method.
+            self.api_use('core', 1)
             if rtn.status_code != 200:
                 log.error("Error! Status: " + str(rtn.status_code))
                 log.error(rtn.text)
@@ -371,7 +373,6 @@ class Icehub():
                 },
                 upsert=True
             )
-            self.api_use('core', 1)
             log.debug(f'{repo_owner}/{repo_name} is saved')
             # time.sleep(0.8)
 
@@ -477,8 +478,8 @@ if __name__ == '__main__':
         ice.save_repository_info(args.repo_owner, args.repo_name)
 
     if args.repo_unsaved:
-        ice.get_unsaved_repo('user_issue')
-        ice.get_unsaved_repo('user_pr')
+        ice.save_repository('user_issue')
+        ice.save_repository('user_pr')
     
     if args.username_list:
         log.info(ice.get_user_list(limit=10))
