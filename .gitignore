@@ -1,3 +1,6 @@
 # script
 script/.env
 script/data
+.DS_Store
+.idea/*
+/script/src/__pycache__
