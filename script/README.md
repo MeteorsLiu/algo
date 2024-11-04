@@ -25,6 +25,8 @@ python icehub.py --username SweetIceLolly --output_dir data
 
 核心策略为通过判断某一仓库对于标准仓库的偏离程度（z-score）来进行评分。（权重通过）
 
+![z-score](assets/equation4158.svg)
+
 1. 影响力（logarithm）
     - star 数量
     - fork 数量
