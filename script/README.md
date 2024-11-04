@@ -35,7 +35,7 @@ python icehub.py --username SweetIceLolly --output_dir data
     - 已解决的 issue 占比
     - issue 的频率
 
-首先需要爬取大量随机仓库的数据，并对所有的数据取对数来抑制极端值，因为 GitHub 上的仓库数量分布是一个长尾分布。
+首先需要爬取大量随机仓库的数据，并对所有的数据取对数来抑制极端值，因为 GitHub 上的仓库各项数据分布是一个长尾分布。
 
 ## 用户评分策略
 
