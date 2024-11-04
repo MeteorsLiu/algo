@@ -1,4 +1,9 @@
 # script
+.idea/*
+
 script/.env
 script/data
+/script/src/__pycache__
+
 script/__pycache__
+.DS_Store

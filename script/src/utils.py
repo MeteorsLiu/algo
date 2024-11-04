@@ -176,3 +176,16 @@ def email_nation(email: str):
         result = pycountry.countries.get(alpha_2=tld.upper())
 
     return result.name if result else None
+
+
+def z_score(data: list[float], mean: float, std: float) -> list[float]:
+    """
+    计算标准分数。
+    Args:
+        data: 数据列表。
+        mean: 平均值。
+        std: 标准差。
+    Returns:
+        标准分数列表。
+    """
+    return [(x - mean) / std for x in data]

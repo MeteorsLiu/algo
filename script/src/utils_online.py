@@ -22,7 +22,7 @@ def commit_timezone(repo_fullname: str, commit_hash: str):
     pattern = r"(Date:\s.*?([+-]\d{4}))"
     matches = [(match.group(), match.start()) for match in re.finditer(pattern, response.text)]
 
-    if len(matches) == 1:  # TODO: add position filtering
+    if len(matches) == 1:  # TODO: 添加匹配位置过滤，避免正文中出现类似格式字符串
         return matches[0][0][-5:]
     else:
         return -1
@@ -38,7 +38,7 @@ def user_info(username: str, token: str = None) -> dict:
         用户信息。
     """
     response = requests.get(url=f"https://api.github.com/users/{username}",
-                            headers={"Authorization": f"token {token}"})
+                            headers={"Authorization": f"Bearer {token}"})
     return response.json()
 
 
@@ -66,7 +66,7 @@ def repo_readme(repo_fullname: str, token: str = None):
         README 内容。
     """
     response = requests.get(url=f"https://api.github.com/repos/{repo_fullname}/readme",
-                            headers={"Authorization": f"token {token}"})
+                            headers={"Authorization": f"Bearer {token}"})
     if response.status_code != 200:
         return None
     readme = response.json().get('content')

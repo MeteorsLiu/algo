@@ -37,7 +37,7 @@ def get_user_nation(username: str, token: str = None):
             readme_langs[item['lang']] = readme_langs.get(item['lang'], 0) + item['score']
 
     if entry_count > 0:
-        readme_langs.pop('en', None) # 排除英文
+        readme_langs.pop('en', None)  # 排除英文
         readme_nation_probability = max(readme_langs.values()) / entry_count
         readme_nation_name = utils.language_countries(max(readme_langs, key=readme_langs.get))
         if readme_nation_probability > 0.2 and readme_nation_name is not None:
@@ -61,8 +61,6 @@ def get_user_nation(username: str, token: str = None):
         most_often_nation_probability = timezones[most_often_timezone] / sum(timezones.values())
         return {'nation': most_often_timezone, "probability": most_often_nation_probability}
 
-print(get_user_nation("TwilightLemon"))
-
 
 def last_resort(username: str, token: str = None):
     # 尝试从共同关注列表中推断国家信息
@@ -77,4 +75,3 @@ def last_resort(username: str, token: str = None):
             return {'nation': max(set(nations), key=nations.count), "probability": 1}
         else:
             print(f"没有找到共同关注列表中 GitHub 用户的国家信息。")
-

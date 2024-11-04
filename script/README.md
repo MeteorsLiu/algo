@@ -46,7 +46,7 @@ python icehub.py --help
 
 ## Repo 评分策略
 
-核心策略为通过判断某一仓库对于标准仓库的偏离程度（z-score）来进行评分。（权重通过）
+核心策略为通过判断某一仓库对于标准仓库的偏离程度（z-score）来进行评分。（权重通过 PCA 获得）
 
 ![z-score](assets/equation4158.svg)
 
