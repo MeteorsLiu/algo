@@ -1,0 +1,20 @@
+.animation-left {
+    animation-name: animationLeft;
+    animation-duration: 4s;
+
+}
+
+.animation-right {
+    animation-name: animationRight;
+    animation-duration: 4s;
+}
+
+@keyframes animationLeft {
+    from {inset: "-350px 0px 0px -500px";}
+    to {background-color: "350px 0px 0px 500px"}
+  }
+
+  @keyframes animationRight {
+    from {inset: "350px 0px 0px 500px";}
+    to {background-color: "-350px 0px 0px -500px"}
+  }
