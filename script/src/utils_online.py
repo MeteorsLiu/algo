@@ -137,3 +137,22 @@ def location_nation(location_name: str) -> dict | None:
         country_name = address_parts[-1] if address_parts else None
         return {"nation": country_name, "display_name": location.raw.get("display_name", "")}
     return None
+
+
+def public_repos(token: str = None, limitation: int = 100, since: int = 3442157):
+    """
+    获取 GitHub 上的公共仓库列表。
+    Args:
+        token: GitHub API 访问令牌。
+        limitation: 限制返回的仓库数量。默认为 100。
+        since: 仓库 ID 的起始值。默认为 3442157。
+    Returns:
+        仓库列表。
+    """
+    result = []
+    url = f"https://api.github.com/repositories?since={since}"
+    while url and limitation > 0:
+        response = requests.get(url, headers={"Authorization": f"Bearer {token}"})
+        result.extend([repo['full_name'] for repo in response.json()])
+        url = response.links.get('next', {}).get('url')
+        limitation -= 1
