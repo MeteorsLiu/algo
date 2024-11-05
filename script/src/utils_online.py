@@ -202,3 +202,28 @@ def contributors_count(full_name: str):
     else:
         print(f"contributors response status code: {response.status_code}")
         return None
+
+
+def issue_count(full_name: str):
+    url = f"https://github.com/{full_name}/issues"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
+        closed_element = soup.find("a", {"href": f"/{full_name}/issues?q=is%3Aissue+is%3Aclosed"})
+        open_element = soup.find("a", {"href": f"/{full_name}/issues?q=is%3Aopen+is%3Aissue"})
+        if closed_element and open_element:
+            closed_text = closed_element.get_text(strip=True)
+            open_text = open_element.get_text(strip=True)
+
+            closed_count = int(closed_text.split()[0].replace(',', ''))
+            open_count = int(open_text.split()[0].replace(',', ''))
+
+            return {"closed": closed_count, "open": open_count}
+        else:
+            print(f"issue_element not found: {full_name}")
+            return 0
+    else:
+        print(f"issue response status code: {response.status_code}")
+        return None
