@@ -97,6 +97,15 @@ def user_commits(username: str, maximum: int = 32, sleep_time: float = 0.1):
 
 
 def user_mutual_follows(username, token):
+    """
+    获取用户的双向关注列表。
+    Args:
+        username: GitHub 用户名。
+        token: GitHub API 访问令牌。
+    Returns:
+        双向关注列表。
+    """
+
     def get_user_list(url):
         user_list = []
         while url:
