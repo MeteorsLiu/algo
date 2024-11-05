@@ -229,3 +229,70 @@ def issue_count(full_name: str):
     else:
         print(f"issue response status code: {response.status_code}")
         return None
+
+
+def repo_stats(repo_fullname: str, token: str = None):
+    """
+    获取 GitHub 仓库的统计信息。
+    Args:
+        repo_fullname: 仓库全名。
+        token: GitHub API 访问令牌。
+    Returns:
+        仓库统计信息。包括：
+
+        1. 影响力
+            - star 数量
+            - fork 数量
+            - watch 数量
+            - used by 数量
+            - contributor 数量
+        2. 社区健康度
+            - 已解决的 issue 占比
+            - issue 的频率（issue 数量比上仓库创建时间）
+    """
+    response = requests.get(url=f"https://api.github.com/repos/{repo_fullname}",
+                            headers={"Authorization": f"Bearer {token}"})
+
+    if response.status_code != 200:
+        return None
+
+    repo_info = response.json()
+    stars = repo_info.get('stargazers_count')
+    forks = repo_info.get('forks_count')
+    watchers = repo_info.get('subscribers_count')
+
+    used_by_count = used_by(repo_fullname)
+    if used_by_count is None:
+        return None
+
+    contributors = contributors_count(repo_fullname)
+    if contributors is None:
+        return None
+
+    issues = issue_count(repo_fullname)
+    if issues is None:
+        return None
+
+    if issues['open'] + issues['closed'] > 0:
+        closed_proportion = issues['closed'] / (issues['closed'] + issues['open'])
+    else:
+        closed_proportion = 0
+
+    if repo_info.get('created_at') and repo_info.get('updated_at'):
+        created_at = datetime.fromisoformat(repo_info.get('created_at').replace("Z", "+00:00"))
+        updated_at = datetime.fromisoformat(repo_info.get('updated_at').replace("Z", "+00:00"))
+        created_timespan = (updated_at - created_at).days
+
+        issue_rate = (issues['closed'] + issues['open']) / created_timespan if created_timespan > 0 else 0
+    else:
+        issue_rate = 0
+
+    return {
+        "stars": stars,
+        "forks": forks,
+        "watchers": watchers,
+        "used_by": used_by_count,
+        "contributors": contributors,
+        "closed_proportion": closed_proportion,
+        "issue_rate": issue_rate
+    }
