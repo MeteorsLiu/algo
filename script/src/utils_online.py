@@ -182,3 +182,23 @@ def used_by(full_name: str):
     else:
         print(f"used_by response status code: {response.status_code}")
         return None
+
+
+def contributors_count(full_name: str):
+    url = f"https://github.com/{full_name}/"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
+        contributors_element = soup.find("a", {"class": "Link--inTextBlock Link",
+                                               "href": f"/{full_name}/graphs/contributors"})
+        if contributors_element:
+            contributors_text = contributors_element.get_text(strip=True)
+            return int(contributors_text.split()[1].replace(',', ''))
+        else:
+            print(f"contributors_element not found: {full_name}")
+            return 0
+    else:
+        print(f"contributors response status code: {response.status_code}")
+        return None
