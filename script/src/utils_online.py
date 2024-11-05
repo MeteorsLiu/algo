@@ -156,3 +156,29 @@ def public_repos(token: str = None, limitation: int = 100, since: int = 3442157)
         result.extend([repo['full_name'] for repo in response.json()])
         url = response.links.get('next', {}).get('url')
         limitation -= 1
+
+
+def used_by(full_name: str):
+    """
+    获取仓库的使用者数量。
+    Args:
+        full_name: 仓库全名。
+    Returns:
+        使用者数量。
+    """
+    url = f"https://github.com/{full_name}/network/dependents"
+    headers = {'User-Agent': 'Mozilla/5.0'}
+    response = requests.get(url, headers=headers)
+
+    if response.status_code == 200:
+        soup = BeautifulSoup(response.content, 'html.parser')
+        used_by_element = soup.find("a", {"href": f"/{full_name}/network/dependents?dependent_type=REPOSITORY"})
+        if used_by_element:
+            used_by_result = used_by_element.get_text(strip=True).split()[0]
+            return int(used_by_result.replace(',', ''))
+        else:
+            print(f"used_by_element not found: {full_name}")
+            return 0
+    else:
+        print(f"used_by response status code: {response.status_code}")
+        return None
