@@ -8,7 +8,7 @@ token创建
 https://github.com/settings/tokens
 ```
 
- `script/.env` 配置
+`script/.env` 配置
 
 ```
 GITHUB_USERNAME=
@@ -50,49 +50,61 @@ python icehub.py --help
 ![z-score](assets/equation4158.svg)
 
 1. 影响力
-   - star 数量
-   - fork 数量
-   - watch 数量
-   - used by 数量
-   - contributor 数量
+    - star 数量
+    - fork 数量
+    - watch 数量
+    - used by 数量
+    - contributor 数量
 2. 社区健康度
-   - 已解决的 issue 占比
-   - issue 的频率（issue 数量比上仓库创建时间，单位为天）
+    - issue_rate：已解决的 issue 占比 * issue 的频率（issue 数量比上仓库创建时间，单位为天）
+    - commit 的频率（commit 数量比上仓库创建时间，单位为天）
 
 由于时间限制，所有指标的均值和方差通过在 GitHub 上创建的前 1,205,000 个仓库中随机选取的 1000 个仓库进行计算得到。
 由于仓库各项数据分布可以看作长尾分布，因此在进一步计算之前应该对所有数据取自然对数处理。最终各项参数如下：
 
-权重：
-
-```json
-{"stat":0.77393298, "forks":0.07695682, "watchers":0.05508228, "used_by":0.05038851, "contributors":0.04363072, "last":0.00000868}
-```
-
 均值：
 
 ```
-stars           1.247832
-forks           0.502015
-watchers        1.247571
-used_by         0.073765
-contributors    0.061279
-last            0.000812
+stars           1.132366
+forks           0.451522
+watchers        1.199872
+used_by         0.101942
+contributors    1.192904
+commit_rate     0.159262
+issue_rate      0.000105
 dtype: float64
 ```
 
 标准差：
 
 ```
-stars           1.095863
-forks           1.013710
-watchers        0.664301
-used_by         0.410974
-contributors    0.453624
-last            0.006694
+stars           0.990616
+forks           0.844213
+watchers        0.571998
+used_by         0.684791
+contributors    1.407939
+commit_rate     0.460403
+issue_rate      0.002566
 dtype: float64
 ```
 
-其中 last 为已解决的 issue 占比与 issue 的频率的乘积。
+同时通过处理 PCA 载荷信息，取一组如下权重：
+
+```json
+{
+   "stars": 0.229479,
+   "forks": 0.227530,
+   "watchers": 0.104085,
+   "used_by": 0.102685,
+   "contributors": 0.913740,
+   "issue_rate": 0.198170,
+   "commit_rate": 0.000304
+}
+```
+
+（可以看到其中 contributors 项对该 PC 的贡献最大且全为正数，符合贡献者越多的仓库越可能是优质仓库的直觉）
+
+
 
 ## 用户评分策略
 
