@@ -7,8 +7,7 @@ import numpy as np
 import requests
 from bs4 import BeautifulSoup
 from geopy.geocoders import Nominatim
-from numpy.distutils.conv_template import header
-
+# from numpy.distutils.conv_template import header
 
 def commit_timezone(repo_fullname: str, commit_hash: str):
     """
@@ -321,4 +320,23 @@ def repo_stats(repo_fullname: str, token: str = None):
 
 
 def repo_stats_db(repo_fullname: str, token: str = None):
-    pass
+    from mangodb import Mangodb
+    mango = Mangodb()
+    result = mango.repo_info.find_one(
+        {'full_name': repo_fullname},
+        {
+            'full_name': 1,
+            'forks_count': 1,
+            'open_issues_count': 1,
+            'stargazers_count': 1,
+            'subscribers_count': 1,
+            'watchers_count': 1,
+            'pushed_at': 1
+        }
+    )
+    return result
+
+
+if __name__ == '__main__':
+    a = repo_stats_db('doxygen/doxygen')
+    print(a)
