@@ -195,26 +195,10 @@ def used_by(full_name: str):
         return None
 
 
-def contributors_count(full_name: str):
-    url = f"https://github.com/{full_name}/"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    response = requests.get(url, headers=headers)
 def page_count(url: str, headers: dict):
     response = requests.get(url=url, headers=headers)
     last_url = response.links.get('last', {}).get('url', None)
 
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        contributors_element = soup.find("a", {"class": "Link--inTextBlock Link",
-                                               "href": f"/{full_name}/graphs/contributors"})
-        if contributors_element:
-            contributors_text = contributors_element.get_text(strip=True)
-            return int(contributors_text.split()[1].replace(',', ''))
-        else:
-            print(f"contributors_element not found: {full_name}")
-            return 0
-    else:
-        print(f"contributors response status code: {response.status_code}")
     if last_url is None:
         return 0
     page_num = int(response.links.get('last', {}).get('url', "").split("=")[-1])
@@ -269,7 +253,7 @@ def repo_stats(repo_fullname: str, token: str = None):
         repo_fullname: 仓库全名。
         token: GitHub API 访问令牌。
     Returns:
-        仓库统计信息。包括：
+        自然对数仓库统计信息（频率定义为数量比上仓库创建到最后一次更新的间隔，单位为天）。包括：
 
         1. 影响力
             - star 数量
@@ -278,29 +262,44 @@ def repo_stats(repo_fullname: str, token: str = None):
             - used by 数量
             - contributor 数量
         2. 社区健康度
-            - 已解决的 issue 占比
-            - issue 的频率（issue 数量比上仓库创建时间）
+            - commit 频率
+            - 已解决的 issue 占比 * issue 的频率
     """
-    response = requests.get(url=f"https://api.github.com/repos/{repo_fullname}",
-                            headers={"Authorization": f"Bearer {token}"})
+    result = {}
 
-    if response.status_code != 200:
+    commits = commit_count(repo_fullname, token)
+    if commits is None or commits == 0:
         return None
 
-    repo_info = response.json()
-    stars = repo_info.get('stargazers_count')
-    forks = repo_info.get('forks_count')
-    watchers = repo_info.get('subscribers_count')
+    try:
+        response = requests.get(url=f"https://api.github.com/repos/{repo_fullname}",
+                                headers={"Authorization": f"Bearer {token}"})
+        repo_info = response.json()
+
+        created_at = datetime.fromisoformat(repo_info.get('created_at').replace("Z", "+00:00"))
+        updated_at = datetime.fromisoformat(repo_info.get('updated_at').replace("Z", "+00:00"))
+        created_timespan = (updated_at - created_at).days + 1
+        if repo_info.get('fork') == True and created_timespan < 1:
+            return None
+
+        result["stars"] = np.log(repo_info.get('stargazers_count') + 1)
+        result["forks"] = np.log(repo_info.get('forks_count') + 1)
+        result["watchers"] = np.log(repo_info.get('subscribers_count') + 1)
+    except Exception as e:
+        print(f"repo_info error: {e}")
+        return None
 
     used_by_count = used_by(repo_fullname)
     if used_by_count is None:
         return None
+    result["used_by"] = np.log(used_by_count + 1)
 
-    contributors = contributors_count(repo_fullname)
+    contributors = contributors_count(repo_fullname, token)
     if contributors is None:
         return None
+    result["contributors"] = np.log(contributors + 1)
 
-    issues = issue_count(repo_fullname)
+    issues = issue_count(repo_fullname, token)
     if issues is None:
         return None
 
@@ -309,21 +308,8 @@ def repo_stats(repo_fullname: str, token: str = None):
     else:
         closed_proportion = 0
 
-    if repo_info.get('created_at') and repo_info.get('updated_at'):
-        created_at = datetime.fromisoformat(repo_info.get('created_at').replace("Z", "+00:00"))
-        updated_at = datetime.fromisoformat(repo_info.get('updated_at').replace("Z", "+00:00"))
-        created_timespan = (updated_at - created_at).days
+    issue_rate = (issues['closed'] + issues['open']) / created_timespan if created_timespan > 0 else 0
+    result["issue_rate"] = np.log(closed_proportion * issue_rate + 1)
+    result["commit_rate"] = np.log(commits / created_timespan + 1)
 
-        issue_rate = (issues['closed'] + issues['open']) / created_timespan if created_timespan > 0 else 0
-    else:
-        issue_rate = 0
-
-    return {
-        "stars": stars,
-        "forks": forks,
-        "watchers": watchers,
-        "used_by": used_by_count,
-        "contributors": contributors,
-        "closed_proportion": closed_proportion,
-        "issue_rate": issue_rate
-    }
+    return result
