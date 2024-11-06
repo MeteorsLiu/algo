@@ -233,7 +233,15 @@ def contributors_count(full_name: str, token: str):
         return None
 
 
+def commit_count(full_name: str, token: str):
+    url = f"https://api.github.com/repos/{full_name}/commits?per_page=1&page=1"
+    headers = {"Authorization": f"Bearer {token}"}
 
+    try:
+        return page_count(url, headers)
+    except Exception as e:
+        print(f"commit_count error: {e}")
+        return None
 
 
 def issue_count(full_name: str, token: str):
