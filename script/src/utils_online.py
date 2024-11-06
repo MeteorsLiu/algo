@@ -318,3 +318,7 @@ def repo_stats(repo_fullname: str, token: str = None):
     result["commit_rate"] = np.log(commits / created_timespan + 1)
 
     return result
+
+
+def repo_stats_db(repo_fullname: str, token: str = None):
+    pass
