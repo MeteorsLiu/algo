@@ -86,15 +86,19 @@ class Mangodb():
 
         tmp = self.user_cache.find_one({'username': username})
         if tmp is None:
-            tmp_user_rank = rank.user_rank(username, token)
-            tmp_user_geo = geo.get_nation(username, token)
-            tmp_user_lang = self.get_languages(username, token)
+            try:
+                tmp_user_rank = rank.user_rank(username, token)
+                tmp_user_geo = geo.get_nation(username, token)
+                tmp_user_lang = self.get_languages(username, token)
 
-            self.write_user_cache(username,
-                                  tmp_user_lang,
-                                  tmp_user_geo['nation'],
-                                  tmp_user_geo['probability'],
-                                  tmp_user_rank)
-            return self.user_cache.find_one({'username': username})
+                self.write_user_cache(username,
+                                      tmp_user_lang,
+                                      tmp_user_geo['nation'],
+                                      tmp_user_geo['probability'],
+                                      tmp_user_rank)
+                return self.user_cache.find_one({'username': username})
+            except Exception as e:
+                log.error(e)
+                return None
         else:
             return tmp
