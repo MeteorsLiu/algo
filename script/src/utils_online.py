@@ -1,9 +1,9 @@
 import base64
-import json
 import re
 from datetime import datetime
 from time import sleep
 
+import numpy as np
 import requests
 from bs4 import BeautifulSoup
 from geopy.geocoders import Nominatim
