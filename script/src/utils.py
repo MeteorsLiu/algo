@@ -178,14 +178,14 @@ def email_nation(email: str):
     return result.name if result else None
 
 
-def z_score(data: list[float], mean: float, std: float) -> list[float]:
+def z_score(data: float, mean: float, std: float) -> float:
     """
     计算标准分数。
     Args:
-        data: 数据列表。
+        data: 数据值。
         mean: 平均值。
         std: 标准差。
     Returns:
-        标准分数列表。
+        标准分数。
     """
-    return [(x - mean) / std for x in data]
+    return (data - mean) / std

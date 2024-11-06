@@ -1,9 +1,9 @@
 import base64
-import json
 import re
 from datetime import datetime
 from time import sleep
 
+import numpy as np
 import requests
 from bs4 import BeautifulSoup
 from geopy.geocoders import Nominatim
@@ -52,10 +52,19 @@ def user_repos(username: str):
     Returns:
         仓库列表，若未找到仓库则返回空列表。
     """
-    response = requests.get(f"https://api.github.com/users/{username}/repos")
-    if response.status_code != 200:
-        return []
-    return json.loads(response.text)
+    try:
+        url = f"https://api.github.com/users/{username}/repos"
+
+        result = []
+        while url:
+            response = requests.get(url)
+            result.extend([repo['full_name'] for repo in response.json()])
+            url = response.links.get('next', {}).get('url')
+
+        return result
+    except Exception as e:
+        print(f"user_repos error: {e}")
+        return None
 
 
 def repo_readme(repo_fullname: str, token: str = None):
@@ -186,48 +195,54 @@ def used_by(full_name: str):
         return None
 
 
-def contributors_count(full_name: str):
-    url = f"https://github.com/{full_name}/"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    response = requests.get(url, headers=headers)
+def page_count(url: str, headers: dict):
+    response = requests.get(url=url, headers=headers)
+    last_url = response.links.get('last', {}).get('url', None)
 
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        contributors_element = soup.find("a", {"class": "Link--inTextBlock Link",
-                                               "href": f"/{full_name}/graphs/contributors"})
-        if contributors_element:
-            contributors_text = contributors_element.get_text(strip=True)
-            return int(contributors_text.split()[1].replace(',', ''))
-        else:
-            print(f"contributors_element not found: {full_name}")
-            return 0
-    else:
-        print(f"contributors response status code: {response.status_code}")
+    if last_url is None:
+        return 0
+    page_num = int(response.links.get('last', {}).get('url', "").split("=")[-1])
+
+    return page_num
+
+
+def contributors_count(full_name: str, token: str):
+    url = f"https://api.github.com/repos/{full_name}/contributors?per_page=1&anon=true"
+    headers = {"Authorization": f"Bearer {token}"}
+
+    try:
+        return page_count(url, headers)
+    except Exception as e:
+        print(f"contributors_count error: {e}")
         return None
 
 
-def issue_count(full_name: str):
-    url = f"https://github.com/{full_name}/issues"
-    headers = {'User-Agent': 'Mozilla/5.0'}
-    response = requests.get(url, headers=headers)
+def commit_count(full_name: str, token: str):
+    url = f"https://api.github.com/repos/{full_name}/commits?per_page=1&page=1"
+    headers = {"Authorization": f"Bearer {token}"}
 
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.content, 'html.parser')
-        closed_element = soup.find("a", {"href": f"/{full_name}/issues?q=is%3Aissue+is%3Aclosed"})
-        open_element = soup.find("a", {"href": f"/{full_name}/issues?q=is%3Aopen+is%3Aissue"})
-        if closed_element and open_element:
-            closed_text = closed_element.get_text(strip=True)
-            open_text = open_element.get_text(strip=True)
+    try:
+        return page_count(url, headers)
+    except Exception as e:
+        print(f"commit_count error: {e}")
+        return None
 
-            closed_count = int(closed_text.split()[0].replace(',', ''))
-            open_count = int(open_text.split()[0].replace(',', ''))
 
-            return {"closed": closed_count, "open": open_count}
-        else:
-            print(f"issue_element not found: {full_name}")
-            return 0
-    else:
-        print(f"issue response status code: {response.status_code}")
+def issue_count(full_name: str, token: str):
+    closed_url = f"https://api.github.com/search/issues?q=repo:{full_name}+type:issue+state:closed&page=0&per_page=1"
+    open_url = f"https://api.github.com/search/issues?q=repo:{full_name}+type:issue+state:open&page=0&per_page=1"
+    headers = {"Authorization": f"Bearer {token}"}
+
+    try:
+        closed_response = requests.get(closed_url, headers=headers)
+        open_response = requests.get(open_url, headers=headers)
+
+        closed_count = closed_response.json().get('total_count', 0)
+        open_count = open_response.json().get('total_count', 0)
+
+        return {"closed": closed_count, "open": open_count}
+    except Exception as e:
+        print(f"issue_count error: {e}")
         return None
 
 
@@ -238,7 +253,7 @@ def repo_stats(repo_fullname: str, token: str = None):
         repo_fullname: 仓库全名。
         token: GitHub API 访问令牌。
     Returns:
-        仓库统计信息。包括：
+        自然对数仓库统计信息（频率定义为数量比上仓库创建到最后一次更新的间隔，单位为天）。包括：
 
         1. 影响力
             - star 数量
@@ -247,29 +262,44 @@ def repo_stats(repo_fullname: str, token: str = None):
             - used by 数量
             - contributor 数量
         2. 社区健康度
-            - 已解决的 issue 占比
-            - issue 的频率（issue 数量比上仓库创建时间）
+            - commit 频率
+            - 已解决的 issue 占比 * issue 的频率
     """
-    response = requests.get(url=f"https://api.github.com/repos/{repo_fullname}",
-                            headers={"Authorization": f"Bearer {token}"})
+    result = {}
 
-    if response.status_code != 200:
+    commits = commit_count(repo_fullname, token)
+    if commits is None or commits == 0:
         return None
 
-    repo_info = response.json()
-    stars = repo_info.get('stargazers_count')
-    forks = repo_info.get('forks_count')
-    watchers = repo_info.get('subscribers_count')
+    try:
+        response = requests.get(url=f"https://api.github.com/repos/{repo_fullname}",
+                                headers={"Authorization": f"Bearer {token}"})
+        repo_info = response.json()
+
+        created_at = datetime.fromisoformat(repo_info.get('created_at').replace("Z", "+00:00"))
+        updated_at = datetime.fromisoformat(repo_info.get('updated_at').replace("Z", "+00:00"))
+        created_timespan = (updated_at - created_at).days + 1
+        if repo_info.get('fork') == True and created_timespan < 1:
+            return None
+
+        result["stars"] = np.log(repo_info.get('stargazers_count') + 1)
+        result["forks"] = np.log(repo_info.get('forks_count') + 1)
+        result["watchers"] = np.log(repo_info.get('subscribers_count') + 1)
+    except Exception as e:
+        print(f"repo_info error: {e}")
+        return None
 
     used_by_count = used_by(repo_fullname)
     if used_by_count is None:
         return None
+    result["used_by"] = np.log(used_by_count + 1)
 
-    contributors = contributors_count(repo_fullname)
+    contributors = contributors_count(repo_fullname, token)
     if contributors is None:
         return None
+    result["contributors"] = np.log(contributors + 1)
 
-    issues = issue_count(repo_fullname)
+    issues = issue_count(repo_fullname, token)
     if issues is None:
         return None
 
@@ -278,21 +308,8 @@ def repo_stats(repo_fullname: str, token: str = None):
     else:
         closed_proportion = 0
 
-    if repo_info.get('created_at') and repo_info.get('updated_at'):
-        created_at = datetime.fromisoformat(repo_info.get('created_at').replace("Z", "+00:00"))
-        updated_at = datetime.fromisoformat(repo_info.get('updated_at').replace("Z", "+00:00"))
-        created_timespan = (updated_at - created_at).days
+    issue_rate = (issues['closed'] + issues['open']) / created_timespan if created_timespan > 0 else 0
+    result["issue_rate"] = np.log(closed_proportion * issue_rate + 1)
+    result["commit_rate"] = np.log(commits / created_timespan + 1)
 
-        issue_rate = (issues['closed'] + issues['open']) / created_timespan if created_timespan > 0 else 0
-    else:
-        issue_rate = 0
-
-    return {
-        "stars": stars,
-        "forks": forks,
-        "watchers": watchers,
-        "used_by": used_by_count,
-        "contributors": contributors,
-        "closed_proportion": closed_proportion,
-        "issue_rate": issue_rate
-    }
+    return result
