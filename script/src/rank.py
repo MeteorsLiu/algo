@@ -4,33 +4,33 @@ import utils_online
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 test_mean = {
-    "stars": 0.004543,
-    "forks": 0.001678,
-    "watchers": 0.002349,
-    "used_by": 0.093500,
-    "contributors": 1.159181,
-    "commit_rate": 0.140307,
-    "issue_rate": 0.000549
+    "stars": 1.132366,
+    "forks": 0.451522,
+    "watchers": 1.199872,
+    "used_by": 0.101942,
+    "contributors": 1.192904,
+    "commit_rate": 0.159262,
+    "issue_rate": 0.000105
 }
 
 test_std = {
-    "stars": 0.037582,
-    "forks": 0.017535,
-    "watchers": 0.004528,
-    "used_by": 0.670376,
-    "contributors": 1.322982,
-    "commit_rate": 0.441339,
-    "issue_rate": 0.004910
+    "stars": 0.990616,
+    "forks": 0.844213,
+    "watchers": 0.571998,
+    "used_by": 0.684791,
+    "contributors": 1.407939,
+    "commit_rate": 0.460403,
+    "issue_rate": 0.002566
 }
 
 test_weight = {
-    "stars": 0.45767391,
-    "forks": 0.36005329,
-    "watchers": 0.08024534,
-    "used_by": 0.04689893,
-    "contributors": 0.03328084,
-    "commit_rate": 0.02184671,
-    "issue_rate": 0.00000097
+    "stars": 0.229479,
+    "forks": 0.227530,
+    "watchers": 0.104085,
+    "used_by": 0.102685,
+    "contributors": 0.913740,
+    "issue_rate": 0.198170,
+    "commit_rate": 0.000304
 }
 
 
