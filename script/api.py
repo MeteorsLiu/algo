@@ -15,6 +15,10 @@ GITHUB_ACCESS_TOKEN = os.environ.get('GITHUB_ACCESS_TOKEN')
 
 app = Flask(__name__)
 
+@app.route('/', methods=['GET'])
+def home():
+    return jsonify({'message': 'Welcome to the API!'}), 200
+
 @app.route('/<string:user>/rank', methods=['GET'])
 def user_handle(user):
     rank_avg = rank.user_rank(
