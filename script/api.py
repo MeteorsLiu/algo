@@ -1,5 +1,5 @@
 import os
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 from dotenv import load_dotenv
 
 # 方法一
@@ -7,7 +7,9 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
-from src import rank
+from src import rank, mangodb
+
+mango = mangodb.Mangodb()
 
 load_dotenv()
 
@@ -27,6 +29,16 @@ def user_handle(user):
     )
 
     return jsonify({'rank_avg': rank_avg}), 200
+
+@app.route('/search', methods=['GET'])
+def search():
+    # 从查询参数获取 q 的值
+    q = request.args.get('q')
+
+    if not q:
+        return jsonify({"error": "Missing query parameter 'q'"}), 400
+
+    return jsonify(mango.user_search(q)), 200
 
 if __name__ == '__main__':
     app.run(

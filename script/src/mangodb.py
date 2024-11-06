@@ -102,3 +102,13 @@ class Mangodb():
                 return None
         else:
             return tmp
+
+    def user_search(self, query: str):
+        return self.user_info.find(
+            {
+                "username": {
+                    "$regex": query,
+                    "$options": "i"
+                }
+            }
+        ).to_list()
