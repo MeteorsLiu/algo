@@ -52,10 +52,19 @@ def user_repos(username: str):
     Returns:
         仓库列表，若未找到仓库则返回空列表。
     """
-    response = requests.get(f"https://api.github.com/users/{username}/repos")
-    if response.status_code != 200:
-        return []
-    return json.loads(response.text)
+    try:
+        url = f"https://api.github.com/users/{username}/repos"
+
+        result = []
+        while url:
+            response = requests.get(url)
+            result.extend([repo['full_name'] for repo in response.json()])
+            url = response.links.get('next', {}).get('url')
+
+        return result
+    except Exception as e:
+        print(f"user_repos error: {e}")
+        return None
 
 
 def repo_readme(repo_fullname: str, token: str = None):
