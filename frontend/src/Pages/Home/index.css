@@ -1,20 +1,14 @@
-.animation-left {
-    animation-name: animationLeft;
-    animation-duration: 4s;
-
+.neon {
+  
+  text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px #ff9900,
+      0 0 35px #ff9900, 0 0 40px #ff9900, 0 0 50px #ff9900, 0 0 75px #ff9900;
 }
 
-.animation-right {
-    animation-name: animationRight;
-    animation-duration: 4s;
+.blur-text{
+  position: absolute;
+  top: 0;
+  clip-path: url(#svgTextPath);
+  background: rgba(255,255,255,0.25);
+  backdrop-filter: blur(10px);
 }
 
-@keyframes animationLeft {
-    from {inset: "-350px 0px 0px -500px";}
-    to {background-color: "350px 0px 0px 500px"}
-  }
-
-  @keyframes animationRight {
-    from {inset: "350px 0px 0px 500px";}
-    to {background-color: "-350px 0px 0px -500px"}
-  }
