@@ -1,13 +1,13 @@
 import base64
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from time import sleep
 
 import numpy as np
 import requests
 from bs4 import BeautifulSoup
 from geopy.geocoders import Nominatim
-# from numpy.distutils.conv_template import header
+
 
 def commit_timezone(repo_fullname: str, commit_hash: str):
     """
@@ -237,17 +237,22 @@ def issue_count(full_name: str, token: str):
     open_url = f"https://api.github.com/search/issues?q=repo:{full_name}+type:issue+state:open&page=0&per_page=1"
     headers = {"Authorization": f"Bearer {token}"}
 
-    try:
-        closed_response = requests.get(closed_url, headers=headers)
-        open_response = requests.get(open_url, headers=headers)
+    def fetch_count(url):
+        try:
+            response = requests.get(url, headers=headers)
+            return response.json().get('total_count', 0)
+        except Exception as e:
+            print(f"Error fetching count for {url}: {e}")
+            return 0
 
-        closed_count = closed_response.json().get('total_count', 0)
-        open_count = open_response.json().get('total_count', 0)
+    with ThreadPoolExecutor() as executor:
+        future_closed = executor.submit(fetch_count, closed_url)
+        future_open = executor.submit(fetch_count, open_url)
 
-        return {"closed": closed_count, "open": open_count}
-    except Exception as e:
-        print(f"issue_count error: {e}")
-        return None
+        closed_count = future_closed.result()
+        open_count = future_open.result()
+
+    return {"closed": closed_count, "open": open_count}
 
 
 def repo_stats(repo_fullname: str, token: str = None):
@@ -270,40 +275,75 @@ def repo_stats(repo_fullname: str, token: str = None):
             - 已解决的 issue 占比 * issue 的频率
     """
     result = {}
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
 
+    # Task wrappers for concurrent execution
+    def fetch_repo_info():
+        response = requests.get(f"https://api.github.com/repos/{repo_fullname}", headers=headers)
+        return response.json()
+
+    def fetch_used_by_count():
+        return used_by(repo_fullname)
+
+    def fetch_contributors():
+        return contributors_count(repo_fullname, token)
+
+    def fetch_issues():
+        return issue_count(repo_fullname, token)
+
+    # Fetch commit count first (needed for the main logic)
     commits = commit_count(repo_fullname, token)
     if commits is None or commits == 0:
         return None
 
-    try:
-        response = requests.get(url=f"https://api.github.com/repos/{repo_fullname}",
-                                headers={"Authorization": f"Bearer {token}"})
-        repo_info = response.json()
+    # Execute API calls concurrently
+    with ThreadPoolExecutor() as executor:
+        futures = {
+            executor.submit(fetch_repo_info): "repo_info",
+            executor.submit(fetch_used_by_count): "used_by",
+            executor.submit(fetch_contributors): "contributors",
+            executor.submit(fetch_issues): "issues",
+        }
 
+        results = {}
+        for future in as_completed(futures):
+            task_name = futures[future]
+            try:
+                results[task_name] = future.result()
+            except Exception as e:
+                print(f"{task_name} error: {e}")
+                return None
+
+    # Process fetched data
+    repo_info = results.get("repo_info")
+    if not repo_info:
+        return None
+
+    try:
         created_at = datetime.fromisoformat(repo_info.get('created_at').replace("Z", "+00:00"))
         updated_at = datetime.fromisoformat(repo_info.get('updated_at').replace("Z", "+00:00"))
         created_timespan = (updated_at - created_at).days + 1
-        if repo_info.get('fork') == True and created_timespan < 1:
+        if repo_info.get('fork') and created_timespan < 1:
             return None
 
-        result["stars"] = np.log(repo_info.get('stargazers_count') + 1)
-        result["forks"] = np.log(repo_info.get('forks_count') + 1)
-        result["watchers"] = np.log(repo_info.get('subscribers_count') + 1)
+        result["stars"] = np.log(repo_info.get('stargazers_count', 0) + 1)
+        result["forks"] = np.log(repo_info.get('forks_count', 0) + 1)
+        result["watchers"] = np.log(repo_info.get('subscribers_count', 0) + 1)
     except Exception as e:
-        print(f"repo_info error: {e}")
+        print(f"Error processing repo_info: {e}")
         return None
 
-    used_by_count = used_by(repo_fullname)
+    used_by_count = results.get("used_by")
     if used_by_count is None:
         return None
     result["used_by"] = np.log(used_by_count + 1)
 
-    contributors = contributors_count(repo_fullname, token)
+    contributors = results.get("contributors")
     if contributors is None:
         return None
     result["contributors"] = np.log(contributors + 1)
 
-    issues = issue_count(repo_fullname, token)
+    issues = results.get("issues")
     if issues is None:
         return None
 
