@@ -8,11 +8,10 @@ token创建
 https://github.com/settings/tokens
 ```
 
-script目录内 `.env`配置
+ `script/.env` 配置
 
 ```
 GITHUB_USERNAME=
-GITHUB_COOKIE=
 GITHUB_ACCESS_TOKEN=
 MONGODB_IP=
 MONGODB_PORT=
@@ -51,24 +50,26 @@ python icehub.py --help
 ![z-score](assets/equation4158.svg)
 
 1. 影响力
-    - star 数量
-    - fork 数量
-    - watch 数量
-    - used by 数量
-    - contributor 数量
+   - star 数量
+   - fork 数量
+   - watch 数量
+   - used by 数量
+   - contributor 数量
 2. 社区健康度
-    - 已解决的 issue 占比
-    - issue 的频率（issue 数量比上仓库创建时间，单位为天）
+   - 已解决的 issue 占比
+   - issue 的频率（issue 数量比上仓库创建时间，单位为天）
 
 由于时间限制，所有指标的均值和方差通过在 GitHub 上创建的前 1,205,000 个仓库中随机选取的 1000 个仓库进行计算得到。
 由于仓库各项数据分布可以看作长尾分布，因此在进一步计算之前应该对所有数据取自然对数处理。最终各项参数如下：
 
 权重：
+
 ```json
 {"stat":0.77393298, "forks":0.07695682, "watchers":0.05508228, "used_by":0.05038851, "contributors":0.04363072, "last":0.00000868}
 ```
 
 均值：
+
 ```
 stars           1.247832
 forks           0.502015
@@ -80,6 +81,7 @@ dtype: float64
 ```
 
 标准差：
+
 ```
 stars           1.095863
 forks           1.013710
@@ -98,4 +100,4 @@ dtype: float64
 
 1. 社区项目参与
 2. 个人项目质量与影响力
-3. 
+3.
