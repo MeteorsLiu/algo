@@ -12,3 +12,4 @@ geopy==2.4.1
 pycountry==24.6.1
 pytz==2024.2
 tldextract==5.1.2
+Flask==3.0.3

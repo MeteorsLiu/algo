@@ -25,4 +25,8 @@ def user_handle(user):
     return jsonify({'rank_avg': rank_avg}), 200
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(
+        host='localhost',
+        port=7000,
+        debug=True
+    )
