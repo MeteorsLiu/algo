@@ -118,7 +118,7 @@ def from_commits(username: str, token: str, concurrency: int = 10):
         most_often_timezone = max(timezones, key=timezones.get)
         most_often_nation = utils.timezone_nation(most_often_timezone)
         most_often_nation_probability = timezones[most_often_timezone] / sum(timezones.values())
-        return {'nation': most_often_nation, "probability": most_often_nation_probability}
+        return {'nation': most_often_timezone, "probability": most_often_nation_probability}
 
 
 def get_nation(username: str, token: str, concurrency: int = 32):
