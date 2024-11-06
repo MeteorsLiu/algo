@@ -141,14 +141,18 @@ def location_nation(location_name: str) -> dict | None:
     Returns:
         "nation" 键对应国家名称，"display_name" 键对应完整位置名称。返回 None 如果未找到匹配的国家。
     """
-    geolocator = Nominatim(user_agent="algo-demo-geo")
-    location = geolocator.geocode(location_name, exactly_one=True)
+    try:
+        geolocator = Nominatim(user_agent="algo-demo-geo")
+        location = geolocator.geocode(location_name, exactly_one=True)
 
-    if location:
-        address_parts = location.raw.get("display_name", "").split(", ")
-        country_name = address_parts[-1] if address_parts else None
-        return {"nation": country_name, "display_name": location.raw.get("display_name", "")}
-    return None
+        if location:
+            address_parts = location.raw.get("display_name", "").split(", ")
+            country_name = address_parts[-1] if address_parts else None
+            return {"nation": country_name, "display_name": location.raw.get("display_name", "")}
+        return None
+    except Exception as e:
+        print(f"API Error: {e}")
+        return None
 
 
 def public_repos(token: str = None, limitation: int = 100, since: int = 3442157):
