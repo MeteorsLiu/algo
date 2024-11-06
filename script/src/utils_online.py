@@ -7,6 +7,7 @@ import numpy as np
 import requests
 from bs4 import BeautifulSoup
 from geopy.geocoders import Nominatim
+from numpy.distutils.conv_template import header
 
 
 def commit_timezone(repo_fullname: str, commit_hash: str):
@@ -27,10 +28,10 @@ def commit_timezone(repo_fullname: str, commit_hash: str):
     if len(matches) == 1:  # TODO: 添加匹配位置过滤，避免正文中出现类似格式字符串
         return matches[0][0][-5:]
     else:
-        return -1
+        return None
 
 
-def user_info(username: str, token: str = None) -> dict:
+def user_info(username: str, token: str) -> dict:
     """
     获取 GitHub 用户信息。
     Args:
@@ -86,24 +87,24 @@ def repo_readme(repo_fullname: str, token: str = None):
     return readme
 
 
-def user_commits(username: str, maximum: int = 32, sleep_time: float = 0.1):
+def user_commits(username: str, token: str, maximum: int = 32):
     """
     获取用户在 GitHub 上的提交记录。
     Args:
         username: GitHub 用户名。
-        sleep_time: 请求之间的休眠时间，以避免触发速率限制。默认为 0.1 秒。
+        token: GitHub API 访问令牌。
         maximum: 最大获取提交数。默认为 32。GitHub API 限制为 300。
     Returns:
         提交记录列表，若未找到提交则返回空列表。
     """
     url = f'https://api.github.com/search/commits?q=author:{username}'
+    headers = {"Authorization": f"Bearer {token}"}
 
     commits = []
     while url and len(commits) < maximum:
-        response = requests.get(url)
+        response = requests.get(url=url, headers=headers)
         commits.extend(response.json().get('items', []))
         url = response.links.get('next', {}).get('url')
-        sleep(sleep_time)
     return commits
 
 
