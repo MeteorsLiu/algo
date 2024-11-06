@@ -199,6 +199,9 @@ def contributors_count(full_name: str):
     url = f"https://github.com/{full_name}/"
     headers = {'User-Agent': 'Mozilla/5.0'}
     response = requests.get(url, headers=headers)
+def page_count(url: str, headers: dict):
+    response = requests.get(url=url, headers=headers)
+    last_url = response.links.get('last', {}).get('url', None)
 
     if response.status_code == 200:
         soup = BeautifulSoup(response.content, 'html.parser')
@@ -212,6 +215,21 @@ def contributors_count(full_name: str):
             return 0
     else:
         print(f"contributors response status code: {response.status_code}")
+    if last_url is None:
+        return 0
+    page_num = int(response.links.get('last', {}).get('url', "").split("=")[-1])
+
+    return page_num
+
+
+def contributors_count(full_name: str, token: str):
+    url = f"https://api.github.com/repos/{full_name}/contributors?per_page=1&anon=true"
+    headers = {"Authorization": f"Bearer {token}"}
+
+    try:
+        return page_count(url, headers)
+    except Exception as e:
+        print(f"contributors_count error: {e}")
         return None
 
 
