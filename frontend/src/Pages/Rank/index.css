@@ -6,4 +6,6 @@
 
 .ant-card {
     border-radius: 16px !important;
+    opacity: 0.85;
+    backdrop-filter: blur(8px);
 }

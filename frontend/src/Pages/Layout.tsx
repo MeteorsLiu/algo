@@ -6,12 +6,12 @@ import { backgroundState } from "../hooks/useBackground";
 const Layout = () => {
   const expand = useAtomValue(backgroundState);
   return (
-    <div className="relative w-full bg-gray-900 min-h-screen flex flex-col overflow-hidden">
+    <div className="relative w-full z-0  bg-gray-900 min-h-screen flex flex-col overflow-hidden">
       <Outlet />
       <Footer />
 
       <div
-        className="absolute transition-all duration-[2000ms] max-w-lg blur-[118px] h-[800px] mx-auto sm:max-w-3xl sm:h-[400px]"
+        className="absolute transition-all -z-20 duration-[2000ms] max-w-lg blur-[118px] h-[800px] mx-auto sm:max-w-3xl sm:h-[400px]"
         style={{
           transform: expand ? "rotate(-45deg)" : "rotate(45deg)",
           inset: expand ? "0" : "-350px 0px 0px -500px",
@@ -20,7 +20,7 @@ const Layout = () => {
         }}
       ></div>
       <div
-        className="absolute transition-all duration-[2000ms]   max-w-lg blur-[118px] h-[800px] mx-auto sm:max-w-3xl sm:h-[400px]"
+        className="absolute transition-all  -z-20 duration-[2000ms]   max-w-lg blur-[118px] h-[800px] mx-auto sm:max-w-3xl sm:h-[400px]"
         style={{
           transform: expand ? "rotate(45deg)" : "rotate(-45deg)",
           inset: expand ? "0" : "350px 0px 0px 500px",
