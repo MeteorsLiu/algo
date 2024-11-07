@@ -1,0 +1,9 @@
+.neon-card:hover {
+    box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px #228dff,
+    0 0 30px #228dff;
+
+}
+
+.ant-card {
+    border-radius: 16px !important;
+}

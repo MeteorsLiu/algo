@@ -1,4 +1,4 @@
-import { ConfigProvider } from "antd";
+import { ConfigProvider, theme } from "antd";
 import zhCN from "antd/locale/zh_CN";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./App.css";
@@ -8,7 +8,12 @@ import Rank from "./Pages/Rank";
 
 function App() {
   return (
-    <ConfigProvider locale={zhCN}>
+    <ConfigProvider
+      locale={zhCN}
+      theme={{
+        algorithm: theme.darkAlgorithm,
+      }}
+    >
       <BrowserRouter basename={import.meta.env.BASE_URL}>
         <Routes>
           <Route element={<Layout />}>

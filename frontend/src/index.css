@@ -1,3 +1,8 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.ant-spin >  .ant-spin-dot {
+      font-size: 70px !important;
+    
+  }
