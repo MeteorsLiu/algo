@@ -17,7 +17,7 @@ load_dotenv()
 GITHUB_ACCESS_TOKEN = os.environ.get('GITHUB_ACCESS_TOKEN')
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "https://algo-eno.pages.dev"}})  # 启用 CORS
+CORS(app, resources={r"/*": {"origins": "*"}})  # 允许所有跨域请求
 
 @app.route('/', methods=['GET'])
 def home():
