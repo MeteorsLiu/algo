@@ -1,17 +1,9 @@
-
-import requests
-import time
 import logging
-import numpy as np
 import pandas as pd
 import os
 from dotenv import load_dotenv
-import argparse
 from pymongo import MongoClient
-from tqdm import tqdm
-from typing import Literal
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 
 logging.basicConfig(
     level=logging.INFO,

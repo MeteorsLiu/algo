@@ -11,7 +11,6 @@
 import requests
 import time
 import logging
-import json
 import os
 from dotenv import load_dotenv
 import argparse

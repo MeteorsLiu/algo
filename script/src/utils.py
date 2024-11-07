@@ -129,8 +129,8 @@ def text_lang(text: str):
     """
     if not text:
         return None
-    newtext = re.sub(r'\n', ' ', text)
-    return detect_multilingual(newtext)
+    new_text = re.sub(r'\n', ' ', text)
+    return detect_multilingual(new_text)
 
 
 def timezone_nation(timezone_offset: str):

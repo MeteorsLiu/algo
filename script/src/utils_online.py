@@ -1,7 +1,7 @@
 import base64
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-from time import sleep
 
 import numpy as np
 import requests
@@ -27,10 +27,10 @@ def commit_timezone(repo_fullname: str, commit_hash: str):
     if len(matches) == 1:  # TODO: 添加匹配位置过滤，避免正文中出现类似格式字符串
         return matches[0][0][-5:]
     else:
-        return -1
+        return None
 
 
-def user_info(username: str, token: str = None) -> dict:
+def user_info(username: str, token: str) -> dict:
     """
     获取 GitHub 用户信息。
     Args:
@@ -86,24 +86,24 @@ def repo_readme(repo_fullname: str, token: str = None):
     return readme
 
 
-def user_commits(username: str, maximum: int = 32, sleep_time: float = 0.1):
+def user_commits(username: str, token: str, maximum: int = 32):
     """
     获取用户在 GitHub 上的提交记录。
     Args:
         username: GitHub 用户名。
-        sleep_time: 请求之间的休眠时间，以避免触发速率限制。默认为 0.1 秒。
+        token: GitHub API 访问令牌。
         maximum: 最大获取提交数。默认为 32。GitHub API 限制为 300。
     Returns:
         提交记录列表，若未找到提交则返回空列表。
     """
     url = f'https://api.github.com/search/commits?q=author:{username}'
+    headers = {"Authorization": f"Bearer {token}"}
 
     commits = []
     while url and len(commits) < maximum:
-        response = requests.get(url)
+        response = requests.get(url=url, headers=headers)
         commits.extend(response.json().get('items', []))
         url = response.links.get('next', {}).get('url')
-        sleep(sleep_time)
     return commits
 
 
@@ -140,14 +140,18 @@ def location_nation(location_name: str) -> dict | None:
     Returns:
         "nation" 键对应国家名称，"display_name" 键对应完整位置名称。返回 None 如果未找到匹配的国家。
     """
-    geolocator = Nominatim(user_agent="algo-demo-geo")
-    location = geolocator.geocode(location_name, exactly_one=True)
+    try:
+        geolocator = Nominatim(user_agent="algo-demo-geo")
+        location = geolocator.geocode(location_name, exactly_one=True)
 
-    if location:
-        address_parts = location.raw.get("display_name", "").split(", ")
-        country_name = address_parts[-1] if address_parts else None
-        return {"nation": country_name, "display_name": location.raw.get("display_name", "")}
-    return None
+        if location:
+            address_parts = location.raw.get("display_name", "").split(", ")
+            country_name = address_parts[-1] if address_parts else None
+            return {"nation": country_name, "display_name": location.raw.get("display_name", "")}
+        return None
+    except Exception as e:
+        print(f"API Error: {e}")
+        return None
 
 
 def public_repos(token: str = None, limitation: int = 100, since: int = 3442157):
@@ -233,17 +237,22 @@ def issue_count(full_name: str, token: str):
     open_url = f"https://api.github.com/search/issues?q=repo:{full_name}+type:issue+state:open&page=0&per_page=1"
     headers = {"Authorization": f"Bearer {token}"}
 
-    try:
-        closed_response = requests.get(closed_url, headers=headers)
-        open_response = requests.get(open_url, headers=headers)
+    def fetch_count(url):
+        try:
+            response = requests.get(url, headers=headers)
+            return response.json().get('total_count', 0)
+        except Exception as e:
+            print(f"Error fetching count for {url}: {e}")
+            return 0
 
-        closed_count = closed_response.json().get('total_count', 0)
-        open_count = open_response.json().get('total_count', 0)
+    with ThreadPoolExecutor() as executor:
+        future_closed = executor.submit(fetch_count, closed_url)
+        future_open = executor.submit(fetch_count, open_url)
 
-        return {"closed": closed_count, "open": open_count}
-    except Exception as e:
-        print(f"issue_count error: {e}")
-        return None
+        closed_count = future_closed.result()
+        open_count = future_open.result()
+
+    return {"closed": closed_count, "open": open_count}
 
 
 def repo_stats(repo_fullname: str, token: str = None):
@@ -266,40 +275,75 @@ def repo_stats(repo_fullname: str, token: str = None):
             - 已解决的 issue 占比 * issue 的频率
     """
     result = {}
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
 
+    # Task wrappers for concurrent execution
+    def fetch_repo_info():
+        response = requests.get(f"https://api.github.com/repos/{repo_fullname}", headers=headers)
+        return response.json()
+
+    def fetch_used_by_count():
+        return used_by(repo_fullname)
+
+    def fetch_contributors():
+        return contributors_count(repo_fullname, token)
+
+    def fetch_issues():
+        return issue_count(repo_fullname, token)
+
+    # Fetch commit count first (needed for the main logic)
     commits = commit_count(repo_fullname, token)
     if commits is None or commits == 0:
         return None
 
-    try:
-        response = requests.get(url=f"https://api.github.com/repos/{repo_fullname}",
-                                headers={"Authorization": f"Bearer {token}"})
-        repo_info = response.json()
+    # Execute API calls concurrently
+    with ThreadPoolExecutor() as executor:
+        futures = {
+            executor.submit(fetch_repo_info): "repo_info",
+            executor.submit(fetch_used_by_count): "used_by",
+            executor.submit(fetch_contributors): "contributors",
+            executor.submit(fetch_issues): "issues",
+        }
 
+        results = {}
+        for future in as_completed(futures):
+            task_name = futures[future]
+            try:
+                results[task_name] = future.result()
+            except Exception as e:
+                print(f"{task_name} error: {e}")
+                return None
+
+    # Process fetched data
+    repo_info = results.get("repo_info")
+    if not repo_info:
+        return None
+
+    try:
         created_at = datetime.fromisoformat(repo_info.get('created_at').replace("Z", "+00:00"))
         updated_at = datetime.fromisoformat(repo_info.get('updated_at').replace("Z", "+00:00"))
         created_timespan = (updated_at - created_at).days + 1
-        if repo_info.get('fork') == True and created_timespan < 1:
+        if repo_info.get('fork') and created_timespan < 1:
             return None
 
-        result["stars"] = np.log(repo_info.get('stargazers_count') + 1)
-        result["forks"] = np.log(repo_info.get('forks_count') + 1)
-        result["watchers"] = np.log(repo_info.get('subscribers_count') + 1)
+        result["stars"] = np.log(repo_info.get('stargazers_count', 0) + 1)
+        result["forks"] = np.log(repo_info.get('forks_count', 0) + 1)
+        result["watchers"] = np.log(repo_info.get('subscribers_count', 0) + 1)
     except Exception as e:
-        print(f"repo_info error: {e}")
+        print(f"Error processing repo_info: {e}")
         return None
 
-    used_by_count = used_by(repo_fullname)
+    used_by_count = results.get("used_by")
     if used_by_count is None:
         return None
     result["used_by"] = np.log(used_by_count + 1)
 
-    contributors = contributors_count(repo_fullname, token)
+    contributors = results.get("contributors")
     if contributors is None:
         return None
     result["contributors"] = np.log(contributors + 1)
 
-    issues = issue_count(repo_fullname, token)
+    issues = results.get("issues")
     if issues is None:
         return None
 
@@ -313,3 +357,26 @@ def repo_stats(repo_fullname: str, token: str = None):
     result["commit_rate"] = np.log(commits / created_timespan + 1)
 
     return result
+
+
+def repo_stats_db(repo_fullname: str, token: str = None):
+    from mangodb import Mangodb
+    mango = Mangodb()
+    result = mango.repo_info.find_one(
+        {'full_name': repo_fullname},
+        {
+            'full_name': 1,
+            'forks_count': 1,
+            'open_issues_count': 1,
+            'stargazers_count': 1,
+            'subscribers_count': 1,
+            'watchers_count': 1,
+            'pushed_at': 1
+        }
+    )
+    return result
+
+
+if __name__ == '__main__':
+    a = repo_stats_db('doxygen/doxygen')
+    print(a)
