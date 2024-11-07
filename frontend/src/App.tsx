@@ -4,6 +4,7 @@ import { BrowserRouter, Route, Routes } from "react-router-dom";
 import "./App.css";
 import Home from "./Pages/Home";
 import Layout from "./Pages/Layout";
+import Rank from "./Pages/Rank";
 
 function App() {
   return (
@@ -12,6 +13,7 @@ function App() {
         <Routes>
           <Route element={<Layout />}>
             <Route element={<Home />} index />
+            <Route element={<Rank />} path="/rank/:name" />
           </Route>
         </Routes>
       </BrowserRouter>

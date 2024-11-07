@@ -1,7 +1,7 @@
 import { Input } from "antd";
 
-import { SearchOutlined } from "@ant-design/icons";
-import { useClickAway } from "ahooks";
+import { LoadingOutlined, SearchOutlined } from "@ant-design/icons";
+import { useClickAway, useRequest } from "ahooks";
 import { useSetAtom } from "jotai";
 import { useRef, useState } from "react";
 import { backgroundState } from "../../hooks/useBackground";
@@ -10,12 +10,30 @@ import "./index.css";
 const Home = () => {
   const ref = useRef<HTMLDivElement | null>(null);
   const startAnimation = useSetAtom(backgroundState);
-  const [expand, setExpand] = useState(false);
+  const [hide, setHide] = useState(true);
+  const [input, setInput] = useState("");
 
   useClickAway(() => {
-    setExpand(false);
+    setHide(true);
     startAnimation(false);
   }, ref);
+
+  const { data, loading } = useRequest(
+    async () => {
+      const res = await fetch(`http://api.jellyqwq.top/search?q=${input}`, {
+        method: "GET",
+
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+      console.log(res);
+    },
+    {
+      debounceWait: 500,
+      refreshDeps: [input],
+    }
+  );
 
   return (
     <main className="relative pt-28  flex-1 w-full overflow-hidden">
@@ -30,10 +48,8 @@ const Home = () => {
         <div
           ref={ref}
           style={{
-            height: expand ? 300 : 43,
-            filter: expand
-              ? "drop-shadow(0 0 3px #fff)"
-              : "drop-shadow(0 0 10px #fff)",
+            height: hide ? 43 : "auto",
+            filter: "drop-shadow(0 0 10px #fff)",
           }}
           className="mt-12 mx-auto  rounded-3xl  transition-all duration-[1500ms] bg-white max-w-lg shadow-sm hover:shadow-md "
         >
@@ -43,20 +59,28 @@ const Home = () => {
               style={{
                 width: "100%",
                 height: 43,
-
-                borderBottom: expand ? 1 : 0,
               }}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
               onClick={() => {
-                setExpand(true);
+                setHide(false);
                 startAnimation(true);
               }}
               placeholder="Github"
               suffix={
-                <SearchOutlined
-                  style={{
-                    fontSize: 20,
-                  }}
-                />
+                loading ? (
+                  <LoadingOutlined
+                    style={{
+                      fontSize: 20,
+                    }}
+                  />
+                ) : (
+                  <SearchOutlined
+                    style={{
+                      fontSize: 20,
+                    }}
+                  />
+                )
               }
             />
           </form>
