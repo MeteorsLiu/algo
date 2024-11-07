@@ -4,6 +4,8 @@ import os
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from sklearn.decomposition import PCA
+from tqdm import tqdm
+import numpy as np
 
 logging.basicConfig(
     level=logging.INFO,
@@ -78,9 +80,46 @@ class PCAT():
         # self.df = pd.DataFrame(np.log2(self.df), columns=self.df.columns, index=self.df.index)
         pass
 
+    # get all repos, limit to 100,000
+    def perform_pca_plus(self, limit: int = 100000):
+        repos_learn = list(self.repo_info.aggregate([{"$sample": {"size": limit}}]))
+
+        repos_to_learn = []
+        for repo_learn in tqdm(repos_learn, desc='repo learn'):
+            try:
+                repos_to_learn.append({
+                    "full_name": repo_learn["full_name"],
+                    "stars": np.log(repo_learn["stargazers_count"] + 1),
+                    "forks": np.log(repo_learn["forks_count"] + 1),
+                    "watches": np.log(repo_learn["watchers_count"] + 1),
+                    "subscribers": np.log(repo_learn["subscribers_count"] + 1),
+                    "issues": np.log(repo_learn.get("issue_count", 0) + 1),
+                    "prs": np.log(repo_learn.get("pr_count", 0) + 1)
+                })
+            except Exception:
+                log.error(repo_learn, stack_info=True)
+
+        repos_to_learn_df = pd.DataFrame(repos_to_learn).drop(columns=["full_name"])
+        pca = PCA(n_components=6)
+        principal_components = pca.fit_transform(repos_to_learn_df)
+
+        loadings = pca.components_
+        loadings_df = pd.DataFrame(loadings, columns=repos_to_learn_df.columns)
+        log.info("Principal Component Loadings:")
+        log.info(loadings_df)
+
+        mean = repos_to_learn_df.mean()
+        std = repos_to_learn_df.std()
+        log.info("Mean:")
+        log.info(mean)
+        log.info("Standard Deviation:")
+        log.info(std)
+
+
 if __name__ == '__main__':
     pcat = PCAT(timeout=40000)
-    pcat.load_repo_statics(limit=0)
-    pcat.data_transform()
-    pcat.perform_pca(n_components=5)
+    # pcat.load_repo_statics(limit=0)
+    # pcat.data_transform()
+    # pcat.perform_pca(n_components=5)
+    pcat.perform_pca_plus(limit=100000)
     pass

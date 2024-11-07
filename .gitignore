@@ -7,3 +7,7 @@ script/data
 
 script/__pycache__
 .DS_Store
+
+# frontend
+frontend/node_modules
+frontend/dist

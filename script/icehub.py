@@ -436,6 +436,42 @@ class Icehub():
         log.debug(data)
         return data
     
+    def extend_repo_issue_pr_count(self, qualifier: Literal['issue', 'pr']):
+        if qualifier == 'issue':
+            collection = self.user_issue
+        elif qualifier == 'pr':
+            collection = self.user_pr
+        else:
+            log.error('qualifier can not empty.')
+            return 2
+        
+        groups = collection.aggregate(
+            [
+                {
+                    "$group": {
+                        "_id": "$full_name",
+                        "count": {"$sum": 1}
+                    }
+                }
+            ]
+        ).to_list()
+        for doc in tqdm(groups, desc=f'Extend {qualifier}'):
+            full_name = doc['_id']
+            count = doc['count']
+            self.repo_info.update_one(
+                {
+                    'full_name': full_name,
+                    f'{qualifier}_count': {"$exists": False}
+                },
+                {
+                    '$set': {
+                        f'{qualifier}_count': count
+                    }
+                },
+            )
+
+
+    
 if __name__ == '__main__':
     # 创建解析器
     parser = argparse.ArgumentParser(description="ICEHUB")
@@ -451,6 +487,7 @@ if __name__ == '__main__':
     parser.add_argument('--repo_owner', type=str, help="get repository owner", required=False)
     parser.add_argument('--repo_name', type=str, help="get repository name", required=False)
     parser.add_argument('--repo_unsaved', help="get unsaved repository", action='store_true')
+    parser.add_argument('--extend_repo_issue_pr_count', help="extend_repo_issue_pr_count", action='store_true')
     
     # 解析参数
     args = parser.parse_args()
@@ -482,5 +519,9 @@ if __name__ == '__main__':
     
     if args.username_list:
         log.info(ice.get_user_list(limit=10))
+
+    if args.extend_repo_issue_pr_count:
+        ice.extend_repo_issue_pr_count('issue')
+        ice.extend_repo_issue_pr_count('pr')
 
     # log.info(ice.get_rate_limit())
