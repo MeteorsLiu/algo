@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 from sklearn.decomposition import PCA
 from tqdm import tqdm
+import numpy as np
 
 logging.basicConfig(
     level=logging.INFO,
@@ -90,12 +91,12 @@ class PCAT():
                 # repo_issues_learn = len(list(issue_collection.find({"full_name": repo_learn["full_name"]})))
                 repos_to_learn.append({
                     "full_name": repo_learn["full_name"],
-                    "stars": repo_learn["stargazers_count"],
-                    "forks": repo_learn["forks_count"],
-                    "watches": repo_learn["watchers_count"],
-                    "subscribers": repo_learn["subscribers_count"],
-                    "issues": repo_learn["issue_count"],
-                    "prs": repo_learn["pr_count"]
+                    "stars": np.log(repo_learn["stargazers_count"] + 1),
+                    "forks": np.log(repo_learn["forks_count"] + 1),
+                    "watches": np.log(repo_learn["watchers_count"] + 1),
+                    "subscribers": np.log(repo_learn["subscribers_count"] + 1),
+                    "issues": np.log(repo_learn["issue_count"] + 1),
+                    "prs": np.log(repo_learn["pr_count"] + 1)
                 })
             except Exception:
                 log.error(repo_learn, stack_info=True)
