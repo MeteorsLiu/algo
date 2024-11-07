@@ -42,3 +42,7 @@ cd frontend && pnpm install && pnpm run build
 4. **前端展示模块 (frontend)**：前端模块负责调用 API，并展示来自数据库的数据。主要功能包括：
   - 根据用户输入，调用 API 接口模块获取所需数据并动态展示给用户
   - 简洁、美观、流畅的界面，以用户友好的方式展示信息
+
+### 视频演示
+
+https://github.com/user-attachments/assets/c06f3445-0055-437d-a812-ae7f993a9394
