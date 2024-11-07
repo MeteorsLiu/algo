@@ -2,15 +2,26 @@
 
 此项目旨在从 GitHub 上自动爬取数据，存储到本地数据库中，通过算法分析这些数据，并通过前端展示结果。项目分为多个模块，包括爬虫、算法分析、API 接口及前端展示。
 
+## 前端展示
+地址：https://algo-eno.pages.dev/
+
+### 前端部署
+```
+cd frontend && pnpm install && pnpm run build
+```
+上传即可
+
 ### 目录结构
 ```
 项目根目录
+├── script               # 前端
 ├── script               # 脚本文件夹
 │   ├── icehub.py        # 爬虫模块
 │   ├── src              # 数据分析模块
 │   └── api.py           # API 接口模块（使用 Flask）
 └── frontend             # 前端展示模块
 ```
+
 
 ### 模块介绍
 
