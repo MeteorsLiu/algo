@@ -17,7 +17,8 @@ load_dotenv()
 GITHUB_ACCESS_TOKEN = os.environ.get('GITHUB_ACCESS_TOKEN')
 
 app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})  # 允许所有跨域请求
+# CORS(app, resources={r"/*": {"origins": "*"}})  # 允许所有跨域请求
+CORS(app, resources=r'/*')
 
 @app.route('/', methods=['GET'])
 def home():
