@@ -1,7 +1,6 @@
 import { LeftCircleFilled, PieChartOutlined } from "@ant-design/icons";
 import { Menu } from "antd";
 import { ReactNode, useState } from "react";
-import { useParams } from "react-router-dom";
 
 import { motion } from "framer-motion";
 
@@ -21,7 +20,7 @@ const Title = ({ children }: { children: ReactNode }) => (
 );
 
 const Rank = () => {
-  const params = useParams();
+  // const params = useParams();
   const [collapsed, setCollapsed] = useState(false);
 
   return (

@@ -18,7 +18,7 @@ const Home = () => {
     startAnimation(false);
   }, ref);
 
-  const { data, loading } = useRequest(
+  const { loading } = useRequest(
     async () => {
       const res = await fetch(`http://api.jellyqwq.top/search?q=${input}`, {
         method: "GET",
