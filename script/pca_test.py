@@ -87,16 +87,14 @@ class PCAT():
         repos_to_learn = []
         for repo_learn in tqdm(repos_learn, desc='repo learn'):
             try:
-                repo_prs = repo_learn["pr_count"] if not repo_learn["pr_count"] else 0
-                repo_issues = repo_learn["issue_count"] if not repo_learn["issue_count"] else 0
                 repos_to_learn.append({
                     "full_name": repo_learn["full_name"],
                     "stars": np.log(repo_learn["stargazers_count"] + 1),
                     "forks": np.log(repo_learn["forks_count"] + 1),
                     "watches": np.log(repo_learn["watchers_count"] + 1),
                     "subscribers": np.log(repo_learn["subscribers_count"] + 1),
-                    "issues": np.log(repo_issues + 1),
-                    "prs": np.log(repo_prs + 1)
+                    "issues": np.log(repo_learn.get("issue_count", 0) + 1),
+                    "prs": np.log(repo_learn.get("pr_count", 0) + 1)
                 })
             except Exception:
                 log.error(repo_learn, stack_info=True)
