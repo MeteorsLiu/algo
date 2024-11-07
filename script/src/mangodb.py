@@ -103,12 +103,24 @@ class Mangodb():
         else:
             return tmp
 
-    def user_search(self, query: str):
-        return self.user_info.find(
-            {
-                "username": {
-                    "$regex": query,
-                    "$options": "i"
-                }
-            }
-        ).to_list()
+    def language_search(self, language: str, limit: int = 10):
+        # 进行一次查询获取所有包含 `lang` 字段的文档
+        results = self.user_info.find(
+            {"lang": {"$exists": True}}
+        ).limit(limit)
+
+        # 过滤并找到指定语言的最佳匹配（忽略大小写），并按熟练度排序
+        filtered_sorted_results = sorted(
+            (doc for doc in results if any(lang.lower() == language.lower() for lang in doc.get("lang", {}))),
+            key=lambda doc: doc["lang"].get(
+                next(lang for lang in doc["lang"] if lang.lower() == language.lower()), 0
+            ),
+            reverse=True
+        )
+
+        # 返回结果列表中的高熟练度的记录
+        return filtered_sorted_results
+    
+if __name__ == '__main__':
+    mango = Mangodb()
+    print(mango.language_search('Python'))

@@ -43,6 +43,16 @@ def search():
 
     return jsonify(mango.user_search(q)), 200
 
+@app.route('/search/lang', methods=['GET'])
+def search_lang():
+    q = request.args.get('q')
+    l = request.args.get('l', 10, type=int)
+
+    if not q:
+        return jsonify({"error": "Missing query parameter 'q'"}), 400
+
+    return jsonify(mango.language_search(q, l)), 200
+
 if __name__ == '__main__':
     app.run(
         host='localhost',
