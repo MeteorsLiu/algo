@@ -24,9 +24,39 @@ CORS(app, resources=r'/*')
 def home():
     return jsonify({'message': 'Welcome to the API!'}), 200
 
+@app.route('/lang/nearby', methods=['GET'])
+def lang_nearby():
+    q = request.args.get('q')
+    i = request.args.get('i', 10, type=int)
+    l = request.args.get('l', 10, type=int)
+
+    if i < 0:
+        return jsonify({"error": "Invalid index"}), 400
+    
+    if not q:
+        return jsonify({"error": "Missing query parameter 'q'"}), 400
+    
+    return jsonify(mango.user_nearby(q, i, l)), 200
+
 @app.route('/<string:user>/rank', methods=['GET'])
 def user_rank(user):
     return jsonify(mango.user_rank(username=user)), 200
+
+@app.route('/<string:user>/lang/nearby', methods=['GET'])
+def user_nearby(user):
+    q = request.args.get('q')
+    if not q:
+        return jsonify({"error": "Missing query parameter 'q'"}), 400
+    
+    l = request.args.get('l', 10, type=int)
+    if l < 0:
+        return jsonify({"error": "Invalid limit"}), 400
+    
+    return jsonify(mango.user_nearby(q, None, l, user)), 200
+
+@app.route('/<string:user>/repo_ranks', methods=['GET'])
+def user_repo_ranks(user):
+    return jsonify(mango.user_repo_ranks(user)), 200
 
 @app.route('/search/user', methods=['GET'])
 def search_user():
@@ -48,6 +78,8 @@ def search_lang():
         return jsonify({"error": "Missing query parameter 'q'"}), 400
 
     return jsonify(mango.language_search(q, l)), 200
+
+
 
 if __name__ == '__main__':
     app.run(

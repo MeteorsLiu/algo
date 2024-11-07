@@ -137,6 +137,42 @@ class Mangodb():
         # lang_rank = sorted(lang_rank.items(), key=lambda x: x[1], reverse=True)
         return lang_rank
 
+    def user_nearby(self, language: str, language_index: int = None, limit: int = 10, user: str = None):
+        if user:
+            user_info = self.user_info.find_one({
+                'username': user,
+                f"rank_{language}": {"$exists": True}  # 检查 lang 对象中是否包含指定语言
+            })
+            language_index = user_info.get(f'rank_{language}', None)
+
+        if not language_index:
+            return []
+        
+        # 计算前后索引范围
+        before_idx = max(language_index - limit - 1, 0)
+        
+        after_idx = language_index + limit
+
+        # 使用 $and 方法来构建查询条件
+        pipeline = [
+            {"$match": {f"rank_{language}": {"$exists": True}}},  # 筛选包含指定语言的记录
+            {"$sort": {f"rank_{language}": 1}},  # 按语言熟练度降序排序
+            {"$skip": before_idx},  # 跳过前 before_idx 条记录
+            {"$limit": after_idx - before_idx},  # 限制返回的记录数量
+            {"$project": {"rank_repos": 0}}  # 将 field_to_exclude 替换为要排除的字段
+        ]
+
+        result = list(self.user_info.aggregate(pipeline))
+        return result
+
+    def user_repo_ranks(self, username: str):
+        d = self.user_info.find_one(
+            {'username': username},
+            {'username':1, 'rank_repos': 1}
+        )
+        return d
+
+
     def count_unique_languages(self):
         pipeline = [
             {"$project": {"langs": {"$objectToArray": "$lang"}}},  # 将 `lang` 对象转换为数组
@@ -152,4 +188,7 @@ class Mangodb():
 
 if __name__ == '__main__':
     mango = Mangodb()
-    print(mango.user_rank('shan333chao'))
+    print(mango.user_nearby(
+        language='Rust',
+        language_index=1,
+    ))
