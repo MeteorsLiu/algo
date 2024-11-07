@@ -1,0 +1,12 @@
+.neon-card:hover {
+    box-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #fff, 0 0 20px #228dff,
+    0 0 30px #228dff;
+    background-color: rgb(20 20 20 ) !important;
+
+}
+
+.ant-card {
+    border-radius: 16px !important;
+    background-color: rgb(20 20 20 / 0.4) !important;
+    backdrop-filter: blur(8px);
+}
