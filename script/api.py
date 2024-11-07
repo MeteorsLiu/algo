@@ -25,23 +25,19 @@ def home():
     return jsonify({'message': 'Welcome to the API!'}), 200
 
 @app.route('/<string:user>/rank', methods=['GET'])
-def user_handle(user):
-    rank_avg = rank.user_rank(
-        username=user,
-        token=GITHUB_ACCESS_TOKEN
-    )
+def user_rank(user):
+    return jsonify(mango.user_rank(username=user)), 200
 
-    return jsonify({'rank_avg': rank_avg}), 200
-
-@app.route('/search', methods=['GET'])
-def search():
+@app.route('/search/user', methods=['GET'])
+def search_user():
     # 从查询参数获取 q 的值
     q = request.args.get('q')
+    l = request.args.get('l', 10, type=int)
 
     if not q:
         return jsonify({"error": "Missing query parameter 'q'"}), 400
 
-    return jsonify(mango.user_search(q)), 200
+    return jsonify(mango.user_search(q, l)), 200
 
 @app.route('/search/lang', methods=['GET'])
 def search_lang():

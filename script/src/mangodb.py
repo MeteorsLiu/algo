@@ -103,24 +103,53 @@ class Mangodb():
         else:
             return tmp
 
-    def language_search(self, language: str, limit: int = 10):
-        # 进行一次查询获取所有包含 `lang` 字段的文档
-        results = self.user_info.find(
-            {"lang": {"$exists": True}}
-        ).limit(limit)
-
-        # 过滤并找到指定语言的最佳匹配（忽略大小写），并按熟练度排序
-        filtered_sorted_results = sorted(
-            (doc for doc in results if any(lang.lower() == language.lower() for lang in doc.get("lang", {}))),
-            key=lambda doc: doc["lang"].get(
-                next(lang for lang in doc["lang"] if lang.lower() == language.lower()), 0
-            ),
-            reverse=True
-        )
-
-        # 返回结果列表中的高熟练度的记录
-        return filtered_sorted_results
+    # 根据用户输入模糊查询用户 
+    def user_search(self, user: str, limit: int = 10):
+        return self.user_info.find(
+            {
+                "username": {
+                    "$regex": user,
+                    "$options": "i"
+                }
+            }
+        ).limit(limit).to_list()
     
+    # 根据用户输入精确查询语言
+    def language_search(self, language: str, limit: int = 10):
+        return (
+            self.user_info.find(
+                {
+                    f"rank_{language}": {"$exists": True}  # 检查 lang 对象中是否包含指定语言
+                }
+            )
+            .sort(f"rank_{language}", 1)  # 按指定语言的熟练度从高到低排序
+            .limit(limit)
+            .to_list()
+        )
+    
+    def user_rank(self, username: str):
+        d = self.user_info.find_one(
+            {'username': username},
+        )
+        lang_rank = {}
+        for k in d.get('lang', {}).keys():
+            lang_rank[k] = d.get(f'rank_{k}', -1)
+        # lang_rank = sorted(lang_rank.items(), key=lambda x: x[1], reverse=True)
+        return lang_rank
+
+    def count_unique_languages(self):
+        pipeline = [
+            {"$project": {"langs": {"$objectToArray": "$lang"}}},  # 将 `lang` 对象转换为数组
+            {"$unwind": "$langs"},  # 展开数组
+            {"$group": {"_id": "$langs.k"}},  # 将语言名称分组
+            {"$sort": {"count": 1}}  # 按语言名称排序（可选）
+            # {"$count": "unique_languages"}  # 统计唯一语言数
+        ]
+        
+        result = list(self.user_info.aggregate(pipeline))
+        # return result[0]["unique_languages"] if result else 0
+        return result if result else 0
+
 if __name__ == '__main__':
     mango = Mangodb()
-    print(mango.language_search('Python'))
+    print(mango.user_rank('shan333chao'))
