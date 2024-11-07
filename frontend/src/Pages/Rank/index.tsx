@@ -81,7 +81,7 @@ const Person = ({ data }: { data: any }) => {
   );
   return (
     <div className="grid grid-cols-3 gap-4 w-full">
-      <Card className="neon-card transition-all  hover:scale-105">
+      <Card className=" neon-card transition-all  hover:scale-105">
         <Statistic
           title="国籍"
           value={getGeo(data.geo) ? getGeo(data.geo) : "未知"}
