@@ -20,7 +20,7 @@ const Home = () => {
 
   const { loading } = useRequest(
     async () => {
-      const res = await fetch(`http://api.jellyqwq.top/search?q=${input}`, {
+      const res = await fetch(`//api.jellyqwq.top/search?q=${input}`, {
         method: "GET",
 
         headers: {
