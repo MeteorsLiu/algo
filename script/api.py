@@ -1,6 +1,7 @@
 import os
 from flask import Flask, jsonify, request
 from dotenv import load_dotenv
+from flask_cors import CORS  # 导入 CORS
 
 # 方法一
 import sys
@@ -16,6 +17,7 @@ load_dotenv()
 GITHUB_ACCESS_TOKEN = os.environ.get('GITHUB_ACCESS_TOKEN')
 
 app = Flask(__name__)
+CORS(app, resources={r"/*": {"origins": "https://algo-eno.pages.dev"}})  # 启用 CORS
 
 @app.route('/', methods=['GET'])
 def home():
