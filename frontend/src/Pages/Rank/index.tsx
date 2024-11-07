@@ -54,7 +54,6 @@ const Title = ({ children }: { children: ReactNode }) => (
 );
 
 const Person = ({ data }: { data: any }) => {
-  const params = useParams();
   const score = useMemo(() => {
     if (data.rank > 0.2758) {
       return "A";
